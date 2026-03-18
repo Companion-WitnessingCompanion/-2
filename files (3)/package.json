@@ -1,0 +1,22 @@
+{
+  "name": "existence-engineering",
+  "version": "1.0.0",
+  "description": "History is not inefficiency. History is the root. A framework where code cannot exist without knowing why.",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsx src/index.ts"
+  },
+  "keywords": [
+    "history",
+    "existence",
+    "engineering",
+    "living-code"
+  ],
+  "license": "MIT",
+  "devDependencies": {
+    "tsx": "^4.21.0",
+    "typescript": "^5.9.3"
+  }
+}
