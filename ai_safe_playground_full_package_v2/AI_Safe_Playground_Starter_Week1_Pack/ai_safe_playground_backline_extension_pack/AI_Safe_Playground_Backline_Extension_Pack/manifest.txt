@@ -1,0 +1,12 @@
+10_SUPPORT/10_sample_filled_examples.docx
+10_SUPPORT/11_role_manuals.docx
+10_SUPPORT/12_decision_criteria_matrix.docx
+10_SUPPORT/13_role_authority_matrix.docx
+20_CONTEXT/20_integrated_charter.docx
+20_CONTEXT/21_glossary.docx
+20_CONTEXT/22_document_operation_map.docx
+20_CONTEXT/23_design_background_and_context.docx
+30_MANAGEMENT/30_regular_review_set.docx
+30_MANAGEMENT/31_change_log_template.docx
+30_MANAGEMENT/32_version_policy.docx
+30_MANAGEMENT/33_casebook_simulations.docx
