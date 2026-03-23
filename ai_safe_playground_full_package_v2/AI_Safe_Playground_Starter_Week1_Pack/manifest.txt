@@ -1,0 +1,9 @@
+00_README/00_readme_start_here.docx
+01_CORE/01_short_charter.docx
+01_CORE/02_operating_rules_excerpt.docx
+02_FLOW/03_field_checklist.docx
+02_FLOW/04_core_sop.docx
+03_INPUT/05_exception_request_form.docx
+03_INPUT/06_meta_review_request_form.docx
+04_EXECUTION/07_week1_operation_sheet.docx
+04_EXECUTION/08_operation_board_summary.docx
