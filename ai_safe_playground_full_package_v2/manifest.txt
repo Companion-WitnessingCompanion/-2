@@ -1,0 +1,9 @@
+01_short_charter.docx
+02_integrated_charter.docx
+03_operating_rules.docx
+04_warning_signals_checklist.docx
+05_meta_review_procedure.docx
+06_incident_response_sop.docx
+07_document_operation_map.docx
+08_change_log_template.docx
+09_glossary.docx
