@@ -1,0 +1,7 @@
+01_short_charter.docx
+02_operating_rules_excerpt.docx
+03_field_checklist.docx
+04_core_sop.docx
+05_exception_request_form.docx
+06_meta_review_request_form.docx
+manifest.txt
