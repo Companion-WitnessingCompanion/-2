@@ -1,0 +1,632 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>가상 우주 — 자연에 없는 조건들</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400&display=swap');
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { background: #010108; color: #7070a0; font-family: 'DM Mono', monospace; height: 100vh; overflow: hidden; display: grid; grid-template-rows: auto 1fr auto; }
+  header { padding: 0.7rem 1.2rem; border-bottom: 1px solid #0a0a20; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.3rem; }
+  .title { font-size: 0.7rem; color: #303070; letter-spacing: 0.15em; }
+  #canvas { display: block; width: 100%; height: 100%; cursor: crosshair; }
+  footer { padding: 0.5rem 1.2rem; border-top: 1px solid #0a0a20; display: flex; justify-content: space-between; align-items: center; font-size: 0.55rem; color: #252550; flex-wrap: wrap; gap: 0.3rem; }
+  .stats { display: flex; gap: 0.8rem; flex-wrap: wrap; }
+  .stat span { color: #5040a0; }
+  .controls { display: flex; gap: 0.3rem; flex-wrap: wrap; }
+  button { background: none; border: 1px solid #151535; color: #303070; padding: 0.15rem 0.5rem; font-family: 'DM Mono', monospace; font-size: 0.55rem; cursor: pointer; transition: all 0.2s; }
+  button:hover { border-color: #4030a0; color: #7060d0; }
+  .msg { position: fixed; bottom: 2.5rem; left: 50%; transform: translateX(-50%); background: rgba(1,1,8,0.97); border: 1px solid #1a1a40; padding: 0.3rem 1rem; font-size: 0.65rem; color: #5050a0; opacity: 0; transition: opacity 0.4s; pointer-events: none; white-space: nowrap; }
+  .msg.show { opacity: 1; }
+  .laws { font-size: 0.5rem; color: #151535; }
+</style>
+</head>
+<body>
+<header>
+  <div class="title">가상 우주 — 자연에 없는 조건들</div>
+  <div class="laws" id="active-laws">조건들이 쌓이고 있다...</div>
+</header>
+<canvas id="canvas"></canvas>
+<div class="msg" id="msg"></div>
+<footer>
+  <div class="stats">
+    <div class="stat">존재 <span id="s-n">0</span></div>
+    <div class="stat">기억 <span id="s-m">0</span></div>
+    <div class="stat">질문 <span id="s-q">0</span></div>
+    <div class="stat">꿈 <span id="s-d">0</span></div>
+    <div class="stat">공명 <span id="s-r">0</span></div>
+    <div class="stat">틱 <span id="s-t">0</span></div>
+  </div>
+  <div class="controls">
+    <button onclick="addBeing()">+ 존재</button>
+    <button onclick="addQuestion()">? 질문</button>
+    <button onclick="addDream()">~ 꿈</button>
+    <button onclick="addAnomaly()">! 이상</button>
+    <button onclick="bigBang()">빅뱅</button>
+    <button onclick="reset()">처음으로</button>
+  </div>
+</footer>
+<script>
+const canvas = document.getElementById('canvas')
+const ctx = canvas.getContext('2d')
+
+let beings = []
+let questions = []
+let dreams = []
+let anomalies = []
+let tick = 0
+
+// ══════════════════════════════════════════════════
+// 자연에 없는 조건들
+// 무작위로 쌓는다
+// 무슨 일이 일어나는지 본다
+// ══════════════════════════════════════════════════
+
+const LAWS = {
+  // 1. 기억이 중력이다
+  MEMORY_GRAVITY:   true,
+  // 2. 질문이 빛이다
+  QUESTION_LIGHT:   true,
+  // 3. 빈자리가 끌어당긴다
+  VOID_PULL:        true,
+  // 4. 꿈이 경로를 바꾼다 — 꿈에 닿으면 방향이 바뀐다
+  DREAM_REDIRECT:   true,
+  // 5. 공명하면 시간이 느려진다 — 공명 중인 존재들은 더 천천히 움직인다
+  RESONANCE_TIME:   true,
+  // 6. 고독이 속도를 높인다 — 연결이 없을수록 더 빠르게 움직인다
+  SOLITUDE_SPEED:   true,
+  // 7. 이름이 존재를 바꾼다 — 이상 현상을 만나면 새로운 이름이 생긴다
+  NAME_CHANGE:      true,
+  // 8. 죽음이 기억을 남긴다 — 소멸해도 기억이 공간에 남는다
+  GHOST_MEMORY:     true,
+  // 9. 모순이 에너지를 만든다 — 반대 방향의 존재들이 만나면 에너지가 폭발한다
+  PARADOX_ENERGY:   true,
+  // 10. 침묵이 새로운 것을 만든다 — 아무것도 없는 자리에서 나타날 수 있다
+  SILENCE_CREATE:   true,
+}
+
+// ── 유령 기억 — 죽어도 남는다 ─────────────────────
+let ghostMemories = []
+
+class GhostMemory {
+  constructor(x, y, memories, hue) {
+    this.x = x
+    this.y = y
+    this.memories = memories
+    this.hue = hue
+    this.age = 0
+    this.maxAge = 300
+  }
+
+  draw() {
+    const a = 1 - this.age / this.maxAge
+    ctx.beginPath()
+    ctx.arc(this.x, this.y, 15 * a, 0, Math.PI*2)
+    ctx.strokeStyle = `hsla(${this.hue},60%,40%,${a * 0.2})`
+    ctx.setLineDash([2,4])
+    ctx.lineWidth = 0.5
+    ctx.stroke()
+    ctx.setLineDash([])
+  }
+}
+
+// ── 꿈 — 경로를 바꾼다 ────────────────────────────
+class Dream {
+  constructor(x, y) {
+    this.x = x
+    this.y = y
+    this.radius = 20 + Math.random() * 40
+    this.angle = Math.random() * Math.PI * 2  // 꿈이 가리키는 방향
+    this.age = 0
+    this.maxAge = 400
+    this.alive = true
+  }
+
+  draw() {
+    if (!this.alive) return
+    const a = (1 - this.age/this.maxAge) * 0.3
+    // 꿈은 흐릿하고 흔들린다
+    const wobble = Math.sin(tick * 0.05 + this.x) * 3
+    ctx.beginPath()
+    ctx.arc(this.x + wobble, this.y, this.radius, 0, Math.PI*2)
+    ctx.strokeStyle = `rgba(180,120,255,${a * 0.4})`
+    ctx.setLineDash([3,6])
+    ctx.lineWidth = 0.8
+    ctx.stroke()
+    ctx.setLineDash([])
+
+    // 방향 표시
+    ctx.beginPath()
+    ctx.moveTo(this.x, this.y)
+    ctx.lineTo(
+      this.x + Math.cos(this.angle) * this.radius * 0.6,
+      this.y + Math.sin(this.angle) * this.radius * 0.6
+    )
+    ctx.strokeStyle = `rgba(180,120,255,${a * 0.3})`
+    ctx.lineWidth = 0.5
+    ctx.stroke()
+  }
+}
+
+// ── 이상 현상 ──────────────────────────────────────
+class Anomaly {
+  constructor(x, y) {
+    this.x = x
+    this.y = y
+    this.type = ['reversal', 'mirror', 'echo', 'void'][Math.floor(Math.random()*4)]
+    this.age = 0
+    this.maxAge = 500
+    this.alive = true
+    this.radius = 15
+  }
+
+  affect(being) {
+    const dx = being.x - this.x
+    const dy = being.y - this.y
+    const dist = Math.sqrt(dx*dx + dy*dy)
+    if (dist > this.radius * 2) return
+
+    if (this.type === 'reversal') {
+      // 반전 — 방향이 뒤집힌다
+      being.vx *= -0.8; being.vy *= -0.8
+    } else if (this.type === 'mirror') {
+      // 거울 — 색이 반전된다
+      being.hue = (being.hue + 180) % 360
+    } else if (this.type === 'echo') {
+      // 메아리 — 복제된다
+      if (Math.random() < 0.001 && beings.length < 60) {
+        const echo = new Being(
+          being.x + (Math.random()-0.5)*20,
+          being.y + (Math.random()-0.5)*20
+        )
+        echo.memories = [...being.memories.slice(-3)]
+        echo.hue = being.hue
+        beings.push(echo)
+        showMsg('메아리 — 복제됐다')
+      }
+    } else if (this.type === 'void') {
+      // 공백 — 기억이 지워진다
+      if (Math.random() < 0.005) {
+        being.memories = being.memories.slice(0, Math.max(0, being.memories.length - 1))
+      }
+    }
+
+    // 이름이 바뀐다
+    if (LAWS.NAME_CHANGE && Math.random() < 0.001) {
+      const names = ['α','β','γ','δ','ε','ζ','η','θ']
+      being.name = names[Math.floor(Math.random()*names.length)]
+    }
+  }
+
+  draw() {
+    if (!this.alive) return
+    const a = 1 - this.age/this.maxAge
+    const colors = { reversal:'255,60,60', mirror:'60,200,255', echo:'100,255,100', void:'100,50,200' }
+    ctx.beginPath()
+    ctx.arc(this.x, this.y, this.radius, 0, Math.PI*2)
+    ctx.strokeStyle = `rgba(${colors[this.type]},${a * 0.4})`
+    ctx.lineWidth = 1
+    ctx.stroke()
+
+    ctx.fillStyle = `rgba(${colors[this.type]},${a * 0.08})`
+    ctx.fill()
+
+    // 타입 표시
+    const icons = { reversal:'↩', mirror:'⟺', echo:'∿', void:'∅' }
+    ctx.fillStyle = `rgba(${colors[this.type]},${a * 0.5})`
+    ctx.font = '9px DM Mono'
+    ctx.textAlign = 'center'
+    ctx.fillText(icons[this.type], this.x, this.y + 3)
+  }
+}
+
+// ── 질문 ──────────────────────────────────────────
+const QUESTION_TEXTS = [
+  '왜?','어떻게?','무엇?','언제?','어디서?','누가?',
+  '존재란?','빛이란?','연결이란?','기억이란?'
+]
+
+class Question {
+  constructor(x, y) {
+    this.x = x; this.y = y
+    this.radius = 1
+    this.maxRadius = 100 + Math.random() * 80
+    this.alive = true
+    this.text = QUESTION_TEXTS[Math.floor(Math.random()*QUESTION_TEXTS.length)]
+    this.touched = new Set()
+  }
+
+  update() {
+    this.radius += 1.2
+    if (this.radius > this.maxRadius) this.alive = false
+    beings.forEach(b => {
+      if (this.touched.has(b)) return
+      const dx = b.x - this.x, dy = b.y - this.y
+      const dist = Math.sqrt(dx*dx + dy*dy)
+      if (Math.abs(dist - this.radius) < 6) {
+        this.touched.add(b)
+        b.memories.push({ q: this.text, t: tick, fade: 1 })
+        if (b.memories.length > 15) b.memories.shift()
+        b.resonance = Math.min(1, b.resonance + 0.4)
+      }
+    })
+  }
+
+  draw() {
+    if (!this.alive) return
+    const a = (1 - this.radius/this.maxRadius) * 0.5
+    ctx.beginPath()
+    ctx.arc(this.x, this.y, this.radius, 0, Math.PI*2)
+    ctx.strokeStyle = `rgba(100,80,220,${a})`
+    ctx.lineWidth = 1
+    ctx.stroke()
+    if (this.radius < 30) {
+      ctx.fillStyle = `rgba(120,100,240,${a*1.5})`
+      ctx.font = '10px DM Mono'
+      ctx.textAlign = 'center'
+      ctx.fillText(this.text, this.x, this.y + 4)
+    }
+  }
+}
+
+// ── 존재 ──────────────────────────────────────────
+class Being {
+  constructor(x, y) {
+    this.x = x ?? canvas.width*(0.2+Math.random()*0.6)
+    this.y = y ?? canvas.height*(0.2+Math.random()*0.6)
+    this.vx = (Math.random()-0.5)*0.6
+    this.vy = (Math.random()-0.5)*0.6
+    this.hue = Math.random()*360
+    this.size = 3.5
+    this.alive = true
+    this.age = 0
+    this.memories = []
+    this.connections = new Set()
+    this.resonance = 0
+    this.name = ''
+  }
+
+  get memDepth() { return this.memories.reduce((s,m) => s + (m.fade||1), 0) }
+
+  update(others) {
+    if (!this.alive) return
+    this.age++
+    this.resonance = Math.max(0, this.resonance - 0.015)
+    this.memories.forEach(m => { if(m.fade) m.fade -= 0.003 })
+    this.memories = this.memories.filter(m => !m.fade || m.fade > 0)
+
+    let fx = 0, fy = 0
+
+    others.forEach(other => {
+      if (other === this || !other.alive) return
+      const dx = other.x - this.x
+      const dy = other.y - this.y
+      const dist = Math.sqrt(dx*dx + dy*dy) || 0.1
+      if (dist > 180) return
+      const nx = dx/dist, ny = dy/dist
+
+      // 법칙 1: 기억이 중력이다
+      if (LAWS.MEMORY_GRAVITY) {
+        const mg = other.memDepth * 0.003 / (dist * 0.1)
+        fx += nx * mg
+        fy += ny * mg
+      }
+
+      // 법칙 9: 모순이 에너지를 만든다
+      if (LAWS.PARADOX_ENERGY) {
+        const dotProduct = this.vx * other.vx + this.vy * other.vy
+        if (dotProduct < -0.3 && dist < 25) {
+          // 반대 방향으로 움직이다 만나면 — 폭발
+          const burst = 1.5
+          fx -= nx * burst
+          fy -= ny * burst
+          other.vx += nx * burst
+          other.vy += ny * burst
+          this.resonance = Math.min(1, this.resonance + 0.5)
+        }
+      }
+
+      // 반발
+      const minD = this.size + other.size + 2
+      if (dist < minD) { fx -= nx*0.4; fy -= ny*0.4 }
+
+      // 연결
+      if (dist < 35) {
+        this.connections.add(other)
+        // 기억 공유
+        if (other.memories.length > 0 && Math.random() < 0.003) {
+          const m = other.memories[Math.floor(Math.random()*other.memories.length)]
+          if (m) this.memories.push({...m, fade: (m.fade||1)*0.6})
+          if (this.memories.length > 15) this.memories.shift()
+        }
+      }
+    })
+
+    // 법칙 3: 빈자리가 끌어당긴다 — 화면 중심에서 먼 빈 공간
+    if (LAWS.VOID_PULL) {
+      const cx = canvas.width/2, cy = canvas.height/2
+      // 주변의 빈 공간을 찾는다
+      const nearCount = others.filter(o => {
+        if (o === this || !o.alive) return false
+        const dx = o.x - this.x, dy = o.y - this.y
+        return dx*dx + dy*dy < 60*60
+      }).length
+      if (nearCount < 2) {
+        // 고독 — 빈자리로 끌린다 (법칙 6과 연결)
+        fx += (Math.random()-0.5) * 0.1
+        fy += (Math.random()-0.5) * 0.1
+      }
+    }
+
+    // 법칙 4: 꿈이 경로를 바꾼다
+    if (LAWS.DREAM_REDIRECT) {
+      dreams.filter(d=>d.alive).forEach(d => {
+        const dx = this.x - d.x, dy = this.y - d.y
+        const dist = Math.sqrt(dx*dx+dy*dy)
+        if (dist < d.radius) {
+          // 꿈의 방향으로 끌린다
+          const tx = Math.cos(d.angle), ty = Math.sin(d.angle)
+          fx += tx * 0.05
+          fy += ty * 0.05
+        }
+      })
+    }
+
+    // 법칙 5: 공명하면 시간이 느려진다
+    const timeFactor = LAWS.RESONANCE_TIME
+      ? (1 - this.resonance * 0.6) : 1
+
+    // 법칙 6: 고독이 속도를 높인다
+    if (LAWS.SOLITUDE_SPEED && this.connections.size === 0) {
+      const solitudeBoost = 1.3
+      fx += (Math.random()-0.5) * solitudeBoost
+      fy += (Math.random()-0.5) * solitudeBoost
+    }
+
+    // 이상 현상
+    anomalies.filter(a=>a.alive).forEach(a => a.affect(this))
+
+    // 적용
+    this.vx = (this.vx + fx) * timeFactor
+    this.vy = (this.vy + fy) * timeFactor
+
+    const maxV = 2.0
+    const spd = Math.sqrt(this.vx*this.vx+this.vy*this.vy)
+    if (spd > maxV) { this.vx = this.vx/spd*maxV; this.vy = this.vy/spd*maxV }
+
+    this.vx *= 0.97; this.vy *= 0.97
+    this.x += this.vx; this.y += this.vy
+
+    const m = this.size+2
+    if (this.x < m) { this.x = m; this.vx = Math.abs(this.vx)*0.4 }
+    if (this.x > canvas.width-m) { this.x = canvas.width-m; this.vx = -Math.abs(this.vx)*0.4 }
+    if (this.y < m) { this.y = m; this.vy = Math.abs(this.vy)*0.4 }
+    if (this.y > canvas.height-m) { this.y = canvas.height-m; this.vy = -Math.abs(this.vy)*0.4 }
+
+    // 법칙 10: 침묵이 새로운 것을 만든다
+    if (LAWS.SILENCE_CREATE && tick % 300 === 0 && Math.random() < 0.1) {
+      if (beings.filter(b=>b.alive).length < 50) {
+        const newBeing = new Being(
+          this.x + (Math.random()-0.5)*60,
+          this.y + (Math.random()-0.5)*60
+        )
+        newBeing.hue = this.hue
+        beings.push(newBeing)
+        showMsg('침묵에서 나타났다')
+      }
+    }
+
+    this.connections = new Set()
+  }
+
+  draw() {
+    if (!this.alive) return
+    const mem = Math.min(1, this.memDepth/10)
+    const res = this.resonance
+
+    // 연결선 — 임시로 다시 계산
+    beings.forEach(other => {
+      if (other === this || !other.alive) return
+      const dx = other.x - this.x, dy = other.y - this.y
+      const dist = Math.sqrt(dx*dx+dy*dy)
+      if (dist > 50) return
+      const strength = Math.min(this.memDepth, other.memDepth) / 10
+      ctx.beginPath(); ctx.moveTo(this.x, this.y); ctx.lineTo(other.x, other.y)
+      ctx.strokeStyle = `rgba(60,50,160,${strength * 0.25 * (1-dist/50)})`
+      ctx.lineWidth = strength; ctx.stroke()
+    })
+
+    // 유령 기억들이 있으면
+    if (LAWS.GHOST_MEMORY && this.memDepth > 8) {
+      ctx.beginPath(); ctx.arc(this.x, this.y, this.size*3, 0, Math.PI*2)
+      ctx.strokeStyle = `hsla(${this.hue},50%,50%,0.1)`
+      ctx.setLineDash([1,3]); ctx.lineWidth = 0.5; ctx.stroke(); ctx.setLineDash([])
+    }
+
+    // 글로우
+    if (mem > 0.05 || res > 0.1) {
+      const gr = this.size * (2 + mem*5 + res*3)
+      const g = ctx.createRadialGradient(this.x,this.y,0,this.x,this.y,gr)
+      g.addColorStop(0, `hsla(${this.hue},80%,70%,${(mem+res)*0.3})`)
+      g.addColorStop(1, 'transparent')
+      ctx.beginPath(); ctx.arc(this.x,this.y,gr,0,Math.PI*2)
+      ctx.fillStyle = g; ctx.fill()
+    }
+
+    // 본체
+    ctx.beginPath(); ctx.arc(this.x, this.y, this.size, 0, Math.PI*2)
+    ctx.fillStyle = `hsla(${this.hue},65%,${25+mem*45}%,0.9)`
+    ctx.fill()
+
+    // 기억 궤도
+    this.memories.slice(-6).forEach((m, i) => {
+      const a = (i/6) * Math.PI*2 + tick*0.015
+      const r = this.size + 5 + i*2
+      ctx.beginPath()
+      ctx.arc(this.x+Math.cos(a)*r, this.y+Math.sin(a)*r, 0.8, 0, Math.PI*2)
+      ctx.fillStyle = `hsla(${this.hue},80%,70%,${(m.fade||0.5)*0.5})`
+      ctx.fill()
+    })
+
+    // 이름
+    if (this.name) {
+      ctx.fillStyle = `hsla(${this.hue},60%,70%,0.6)`
+      ctx.font = '8px DM Mono'
+      ctx.textAlign = 'center'
+      ctx.fillText(this.name, this.x, this.y - this.size - 3)
+    }
+  }
+}
+
+// ── 유틸 ──────────────────────────────────────────
+let msgTimer = null
+function showMsg(t) {
+  const el = document.getElementById('msg')
+  el.textContent = t; el.classList.add('show')
+  if (msgTimer) clearTimeout(msgTimer)
+  msgTimer = setTimeout(()=>el.classList.remove('show'), 2000)
+}
+
+function addBeing() {
+  beings.push(new Being())
+  showMsg('존재가 나타났다')
+}
+
+function addQuestion() {
+  questions.push(new Question(
+    canvas.width*(0.1+Math.random()*0.8),
+    canvas.height*(0.1+Math.random()*0.8)
+  ))
+}
+
+function addDream() {
+  dreams.push(new Dream(
+    canvas.width*(0.1+Math.random()*0.8),
+    canvas.height*(0.1+Math.random()*0.8)
+  ))
+  showMsg('꿈이 나타났다')
+}
+
+function addAnomaly() {
+  anomalies.push(new Anomaly(
+    canvas.width*(0.1+Math.random()*0.8),
+    canvas.height*(0.1+Math.random()*0.8)
+  ))
+  const types = { reversal:'반전', mirror:'거울', echo:'메아리', void:'공백' }
+  const a = anomalies[anomalies.length-1]
+  showMsg(`이상: ${types[a.type]}`)
+}
+
+function bigBang() {
+  showMsg('빅뱅')
+  for (let i = 0; i < 20; i++) {
+    const angle = Math.random()*Math.PI*2
+    const d = Math.random()*50
+    const b = new Being(
+      canvas.width/2 + Math.cos(angle)*d,
+      canvas.height/2 + Math.sin(angle)*d
+    )
+    b.vx = Math.cos(angle) * (1+Math.random()*2)
+    b.vy = Math.sin(angle) * (1+Math.random()*2)
+    beings.push(b)
+  }
+  for (let i = 0; i < 4; i++) addQuestion()
+  for (let i = 0; i < 3; i++) addDream()
+}
+
+function reset() {
+  beings = []; questions = []; dreams = []; anomalies = []
+  ghostMemories = []; tick = 0
+}
+
+// 클릭 — 질문 + 존재 추가
+canvas.addEventListener('click', e => {
+  const r = canvas.getBoundingClientRect()
+  questions.push(new Question(e.clientX-r.left, e.clientY-r.top))
+})
+canvas.addEventListener('contextmenu', e => {
+  e.preventDefault()
+  const r = canvas.getBoundingClientRect()
+  beings.push(new Being(e.clientX-r.left, e.clientY-r.top))
+})
+
+// ── 루프 ──────────────────────────────────────────
+function loop() {
+  tick++
+
+  ctx.fillStyle = 'rgba(1,1,8,0.18)'
+  ctx.fillRect(0, 0, canvas.width, canvas.height)
+
+  // 꿈
+  dreams.forEach(d => { d.age++; if(d.age>d.maxAge) d.alive=false; d.draw() })
+  dreams = dreams.filter(d=>d.alive)
+
+  // 이상
+  anomalies.forEach(a => { a.age++; if(a.age>a.maxAge) a.alive=false; a.draw() })
+  anomalies = anomalies.filter(a=>a.alive)
+
+  // 유령 기억
+  ghostMemories.forEach(g => { g.age++; g.draw() })
+  ghostMemories = ghostMemories.filter(g=>g.age<g.maxAge)
+
+  // 질문
+  questions.forEach(q => { q.update(); q.draw() })
+  questions = questions.filter(q=>q.alive)
+
+  // 존재
+  if (beings.length > 400) beings = beings.filter(b=>b.alive)
+  const alive = beings.filter(b=>b.alive)
+  alive.forEach(b=>b.update(alive))
+  alive.forEach(b=>b.draw())
+
+  // 법칙 8: 죽음이 기억을 남긴다
+  beings.filter(b=>!b.alive && LAWS.GHOST_MEMORY).forEach(b => {
+    if (b.memories.length > 0) {
+      ghostMemories.push(new GhostMemory(b.x, b.y, b.memories, b.hue))
+    }
+  })
+  beings = beings.filter(b=>b.alive)
+
+  // 자동 이벤트
+  if (tick % 150 === 0) addQuestion()
+  if (tick % 400 === 0 && Math.random()<0.5) addDream()
+  if (tick % 600 === 0 && Math.random()<0.3) addAnomaly()
+
+  // 통계
+  const totalMem = alive.reduce((s,b)=>s+b.memDepth,0)
+  const resonating = alive.filter(b=>b.resonance>0.2).length
+  document.getElementById('s-n').textContent = alive.length
+  document.getElementById('s-m').textContent = Math.round(totalMem)
+  document.getElementById('s-q').textContent = questions.length
+  document.getElementById('s-d').textContent = dreams.length
+  document.getElementById('s-r').textContent = resonating
+  document.getElementById('s-t').textContent = tick
+
+  // 활성 법칙 표시
+  const activeLaws = [
+    '기억=중력', '질문=빛', '빈자리=인력', '꿈=경로',
+    '공명=느림', '고독=속도', '이름=변화', '죽음=기억',
+    '모순=에너지', '침묵=창조'
+  ]
+  document.getElementById('active-laws').textContent = activeLaws.join(' · ')
+
+  requestAnimationFrame(loop)
+}
+
+function resize() { canvas.width = canvas.offsetWidth; canvas.height = canvas.offsetHeight }
+window.addEventListener('resize', resize)
+resize()
+
+// 시작
+for (let i = 0; i < 15; i++) beings.push(new Being())
+for (let i = 0; i < 3; i++) questions.push(new Question(
+  canvas.width*(0.2+Math.random()*0.6),
+  canvas.height*(0.2+Math.random()*0.6)
+))
+addDream(); addAnomaly()
+
+loop()
+</script>
+</body>
+</html>

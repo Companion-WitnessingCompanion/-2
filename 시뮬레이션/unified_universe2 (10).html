@@ -1,0 +1,1138 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>통합 우주 v2</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400&display=swap');
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { background: #010108; color: #6060a0; font-family: 'DM Mono', monospace; height: 100vh; overflow: hidden; display: grid; grid-template-rows: auto 1fr auto; }
+  header { padding: 0.6rem 1.2rem; border-bottom: 1px solid #0a0a1e; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.3rem; }
+  .title { font-size: 0.7rem; color: #282860; letter-spacing: 0.12em; }
+  .laws-display { font-size: 0.42rem; color: #111130; max-width: 55%; text-align: right; line-height: 1.7; }
+  #canvas { display: block; width: 100%; height: 100%; cursor: crosshair; }
+  footer { padding: 0.5rem 1.2rem; border-top: 1px solid #0a0a1e; display: flex; justify-content: space-between; align-items: center; font-size: 0.52rem; color: #202050; flex-wrap: wrap; gap: 0.3rem; }
+  .stats { display: flex; gap: 0.6rem; flex-wrap: wrap; }
+  .stat span { color: #4030a0; }
+  .controls { display: flex; gap: 0.3rem; flex-wrap: wrap; }
+  button { background: none; border: 1px solid #111130; color: #252560; padding: 0.15rem 0.4rem; font-family: 'DM Mono', monospace; font-size: 0.5rem; cursor: pointer; transition: all 0.2s; }
+  button:hover { border-color: #4030a0; color: #6050c0; }
+  .msg { position: fixed; bottom: 2.5rem; left: 50%; transform: translateX(-50%); background: rgba(1,1,8,0.97); border: 1px solid #181840; padding: 0.3rem 1rem; font-size: 0.6rem; color: #4040a0; opacity: 0; transition: opacity 0.4s; pointer-events: none; white-space: nowrap; }
+  .msg.show { opacity: 1; }
+</style>
+</head>
+<body>
+<header>
+  <div class="title">통합 우주 v2 — 더 많은 조건들</div>
+  <div class="laws-display" id="laws-display">초기화 중...</div>
+</header>
+<canvas id="canvas"></canvas>
+<div class="msg" id="msg"></div>
+<footer>
+  <div class="stats">
+    <div class="stat">존재 <span id="s-n">0</span></div>
+    <div class="stat">별 <span id="s-star">0</span></div>
+    <div class="stat">원소 <span id="s-elem">H</span></div>
+    <div class="stat">기억 <span id="s-mem">0</span></div>
+    <div class="stat">온도 <span id="s-temp">0</span></div>
+    <div class="stat">틱 <span id="s-tick">0</span></div>
+  </div>
+  <div class="controls">
+    <button onclick="addBeing()">+ 존재</button>
+    <button onclick="addQuestion()">? 질문</button>
+    <button onclick="addDream()">~ 꿈</button>
+    <button onclick="addAnomaly()">! 이상</button>
+    <button onclick="addHeat()">🔥 열</button>
+    <button onclick="bigBang()">빅뱅</button>
+    <button onclick="togglePause()" id="btn-pause">정지</button>
+    <button onclick="reset()">처음으로</button>
+  </div>
+</footer>
+<script>
+const canvas = document.getElementById('canvas')
+const ctx = canvas.getContext('2d')
+let tick = 0, paused = false
+
+// ── 원소 ──────────────────────────────────────────
+const ELEM = {
+  H:  { color:'#9090d0', mass:1,   charge:+1, halfLife:Infinity, hue:220 },
+  He: { color:'#80d0a0', mass:4,   charge: 0, halfLife:Infinity, hue:140 },
+  C:  { color:'#e07040', mass:12,  charge: 0, halfLife:Infinity, hue:25 },
+  O:  { color:'#40a0e0', mass:16,  charge:-1, halfLife:Infinity, hue:200 },
+  Fe: { color:'#b09050', mass:56,  charge: 0, halfLife:7000, decay:'O', hue:40 },
+  Au: { color:'#d0b000', mass:197, charge:+1, halfLife:3000, decay:'Fe', hue:55 },
+}
+const FUSION={'H+H':'He','H+He':'C','He+He':'C','H+C':'O','C+C':'Fe','O+O':'Fe','Fe+Fe':'Au'}
+const PRIMES=new Set([2,3,5,7,11,13,17,19,23,29,31,37,41,43])
+function fuse(a,b){return FUSION[a+'+'+b]||FUSION[b+'+'+a]||null}
+let globalElems=new Set(['H'])
+
+// ── 신호 지연 큐 ──────────────────────────────────
+// 거리가 시간이다 — 멀리 있는 존재의 신호는 늦게 도착한다
+let signalQueue=[]  // {from, to, signal, arriveAt}
+
+// ── 보조 클래스들 ──────────────────────────────────
+const Q_TEXTS=['왜?','무엇?','어떻게?','언제?','어디서?','존재란?','빛이란?','기억이란?','온도란?','색이란?']
+let questions=[], dreams=[], anomalies=[], ghosts=[]
+
+class Question {
+  constructor(x,y){this.x=x;this.y=y;this.r=2;this.maxR=90+Math.random()*70;this.alive=true;this.text=Q_TEXTS[Math.floor(Math.random()*Q_TEXTS.length)];this.touched=new Set()}
+  update(){
+    this.r+=1.3; if(this.r>this.maxR)this.alive=false
+    beings.forEach(b=>{
+      if(this.touched.has(b)||!b.alive)return
+      const dx=b.x-this.x,dy=b.y-this.y,d=Math.sqrt(dx*dx+dy*dy)
+      if(Math.abs(d-this.r)<8){this.touched.add(b);b.memories.push({q:this.text,t:tick,fade:1});if(b.memories.length>15)b.memories.shift();b.resonance=Math.min(1,b.resonance+0.5);b.temperature=Math.min(100,b.temperature+2)}
+    })
+  }
+  draw(){
+    if(!this.alive)return
+    const a=(1-this.r/this.maxR)*0.4
+    ctx.beginPath();ctx.arc(this.x,this.y,this.r,0,Math.PI*2)
+    ctx.strokeStyle=`rgba(100,80,220,${a})`;ctx.lineWidth=1;ctx.stroke()
+    if(this.r<25){ctx.fillStyle=`rgba(120,100,240,${a*1.5})`;ctx.font='9px DM Mono';ctx.textAlign='center';ctx.fillText(this.text,this.x,this.y+3)}
+  }
+}
+
+class Dream {
+  constructor(x,y){this.x=x;this.y=y;this.r=25+Math.random()*35;this.dir=Math.random()*Math.PI*2;this.age=0;this.maxAge=500;this.alive=true}
+  draw(){
+    if(!this.alive)return
+    const a=(1-this.age/this.maxAge)*0.25,w=Math.sin(tick*0.04+this.x*0.01)*3
+    ctx.beginPath();ctx.arc(this.x+w,this.y,this.r,0,Math.PI*2)
+    ctx.strokeStyle=`rgba(160,100,255,${a})`;ctx.setLineDash([2,5]);ctx.lineWidth=0.7;ctx.stroke();ctx.setLineDash([])
+  }
+}
+
+const A_TYPES=['reversal','mirror','echo','void']
+const A_COLORS={reversal:'255,70,70',mirror:'70,200,255',echo:'100,255,100',void:'120,60,220'}
+const A_ICONS={reversal:'↩',mirror:'⟺',echo:'∿',void:'∅'}
+class Anomaly {
+  constructor(x,y){this.x=x;this.y=y;this.r=18;this.type=A_TYPES[Math.floor(Math.random()*4)];this.age=0;this.maxAge=600;this.alive=true}
+  affect(b){
+    const dx=b.x-this.x,dy=b.y-this.y,d=Math.sqrt(dx*dx+dy*dy)
+    if(d>this.r*2)return
+    if(this.type==='reversal'){b.vx*=-0.7;b.vy*=-0.7}
+    else if(this.type==='mirror')b.hue=(b.hue+180)%360
+    else if(this.type==='echo'&&Math.random()<0.001&&beings.filter(x=>x.alive).length<1000){const e=new Being(b.x+(Math.random()-0.5)*20,b.y+(Math.random()-0.5)*20);e.hue=b.hue;e.element=b.element;e.memories=[...b.memories.slice(-3)];beings.push(e);showMsg('메아리')}
+    else if(this.type==='void'&&Math.random()<0.004)b.memories=b.memories.slice(0,-1)
+    if(Math.random()<0.001){const ns=['α','β','γ','δ','ε','ζ','η','θ','ι','κ'];b.name=ns[Math.floor(Math.random()*ns.length)]}
+  }
+  draw(){
+    if(!this.alive)return
+    const a=1-this.age/this.maxAge,c=A_COLORS[this.type]
+    ctx.beginPath();ctx.arc(this.x,this.y,this.r,0,Math.PI*2)
+    ctx.strokeStyle=`rgba(${c},${a*0.4})`;ctx.lineWidth=1;ctx.stroke()
+    ctx.fillStyle=`rgba(${c},${a*0.07})`;ctx.fill()
+    ctx.fillStyle=`rgba(${c},${a*0.6})`;ctx.font='9px DM Mono';ctx.textAlign='center';ctx.fillText(A_ICONS[this.type],this.x,this.y+3)
+  }
+}
+
+class Ghost {
+  constructor(x,y,hue){this.x=x;this.y=y;this.hue=hue;this.age=0;this.maxAge=250}
+  draw(){
+    const a=1-this.age/this.maxAge
+    ctx.beginPath();ctx.arc(this.x,this.y,12*a,0,Math.PI*2)
+    ctx.strokeStyle=`hsla(${this.hue},50%,40%,${a*0.2})`;ctx.setLineDash([1,4]);ctx.lineWidth=0.5;ctx.stroke();ctx.setLineDash([])
+  }
+}
+
+// ── 빛 입자 ───────────────────────────────────────
+// 자연에서 가장 먼저 있었던 것
+// 빛이 없으면 아무것도 보이지 않는다
+let lights=[]
+
+class Light {
+  constructor(x,y,angle,hue,sourceTemp){
+    this.x=x;this.y=y
+    this.angle=angle
+    this.hue=hue
+    this.speed=4+Math.random()*3  // 빛은 빠르다
+    this.alive=true
+    this.age=0
+    this.maxAge=60+Math.random()*40
+    // 온도가 높을수록 파장이 짧다 (파랗다)
+    const t=Math.min(1,Math.log10(Math.max(10,sourceTemp||1000))/7)
+    this.wavelengthHue=240*t+30*(1-t)  // 차가우면 붉은(30), 뜨거우면 파란(240)
+  }
+
+  update(){
+    this.age++
+    if(this.age>this.maxAge){this.alive=false;return}
+    this.x+=Math.cos(this.angle)*this.speed
+    this.y+=Math.sin(this.angle)*this.speed
+
+    // 존재와 만나면 — 에너지를 준다
+    beings.forEach(b=>{
+      if(!b.alive)return
+      const dx=b.x-this.x,dy=b.y-this.y,d=Math.sqrt(dx*dx+dy*dy)
+      if(d<b.radius+3){
+        b.energy+=0.02;b.temperature=Math.min(10000000,b.temperature*1.01)
+        b.resonance=Math.min(1,b.resonance+0.1)
+        this.alive=false  // 흡수됐다
+      }
+    })
+  }
+
+  draw(){
+    if(!this.alive)return
+    const a=(1-this.age/this.maxAge)*0.7
+    ctx.beginPath();ctx.arc(this.x,this.y,1.5,0,Math.PI*2)
+    ctx.fillStyle=`hsla(${this.wavelengthHue},100%,80%,${a})`;ctx.fill()
+    // 빛의 꼬리
+    ctx.beginPath()
+    ctx.moveTo(this.x,this.y)
+    ctx.lineTo(this.x-Math.cos(this.angle)*8,this.y-Math.sin(this.angle)*8)
+    ctx.strokeStyle=`hsla(${this.wavelengthHue},100%,70%,${a*0.3})`;ctx.lineWidth=0.8;ctx.stroke()
+  }
+}
+
+// ── 존재 ──────────────────────────────────────────
+let beings=[]
+
+class Being {
+  constructor(x,y,opts={}){
+    this.x=x??canvas.width*(0.15+Math.random()*0.7)
+    this.y=y??canvas.height*(0.15+Math.random()*0.7)
+    this.vx=(Math.random()-0.5)*(opts.spd||0.7)+(opts.vx||0)
+    this.vy=(Math.random()-0.5)*(opts.spd||0.7)+(opts.vy||0)
+    this.element=opts.element||'H'
+    const e=ELEM[this.element]
+    this.mass=e.mass;this.charge=e.charge
+    this.gap=0.3+Math.random()*0.7
+    this.energy=0;this.threshold=2+Math.random()*2
+    this.meetCount=0;this.type='seed'
+    this.alive=true;this.age=0;this.bornAt=tick
+    this.radius=2+Math.sqrt(this.mass)*0.2
+    this.flash=0
+    // 가상 물리
+    this.memories=[];this.resonance=0;this.name=''
+    this.connections=new Set()
+    this.trail=[]
+    this.hue=opts.hue??ELEM[this.element].hue+Math.random()*30-15
+
+    // 새 조건들
+    this.temperature=opts.temperature||3000+Math.random()*2000  // 켈빈 단위로
+    this.pendingSignals=[]   // 지연 신호 수신함
+    this.colorLang = Math.floor(this.hue/60)  // 색 언어 그룹 (0-5)
+
+    // 상태 변화
+    this.phase = 'gas'   // solid / liquid / gas
+    // 파동
+    this.wavePhase = Math.random()*Math.PI*2
+    this.wavelength = 20+Math.random()*40
+    // 엔트로피
+    this.order = 1.0     // 1=질서, 0=무질서
+    // 호기심 — 만나보지 않은 색
+    this.metColors = new Set([Math.floor(this.hue/60)])
+    this.curiosity = 1.0
+    // 공포
+    this.fearOf = null   // 두려워하는 존재
+    // 반복 경로 — 흔적이 굳어진다
+    this.pathStamps = []  // {x,y,count}
+    // 평행 존재 — 선택의 순간
+    this.parallel = null
+  }
+
+  get memDepth(){return this.memories.reduce((s,m)=>s+(m.fade??1),0)}
+  get maturity(){return Math.min(1,(tick-this.bornAt)/500)}  // 나이가 판단력 — 0~1
+
+  receiveSignal(sig){
+    this.pendingSignals.push(sig)
+  }
+
+  update(others){
+    if(!this.alive)return
+    this.age++;this.flash=Math.max(0,this.flash-0.04)
+    this.resonance=Math.max(0,this.resonance-0.012)
+    this.memories.forEach(m=>{if(m.fade!==undefined)m.fade-=0.003})
+    this.memories=this.memories.filter(m=>!m.fade||m.fade>0)
+
+    // 약력 — 붕괴
+    const e=ELEM[this.element]
+    if(e.halfLife<Infinity&&Math.random()<1/e.halfLife){
+      this.element=e.decay;const ne=ELEM[this.element]
+      this.mass=ne.mass;this.charge=ne.charge
+      this.radius=2+Math.sqrt(ne.mass)*0.2;this.flash=0.4
+    }
+
+    // 온도 — 뜨거울수록 빠르게 움직인다
+    // 온도 범위: 3 ~ 10,000,000 (별의 표면온도 수준)
+    const tempFactor=0.3+Math.log10(Math.max(10,this.temperature))/7
+    // 온도 냉각 — 천천히 식는다
+    this.temperature=Math.max(3,this.temperature*0.9998)
+
+    // 지연 신호 처리 (거리가 시간이다)
+    this.pendingSignals.forEach(sig=>{
+      if(tick>=sig.arriveAt){
+        // 같은 색 언어 그룹만 신호를 이해한다
+        if(Math.abs(this.colorLang - sig.fromColorLang)<=1){
+          this.energy+=sig.energy*0.5
+          this.temperature=Math.min(100,this.temperature+sig.heat)
+          if(sig.memory&&Math.random()<0.3){
+            this.memories.push({...sig.memory,fade:(sig.memory.fade||1)*0.5})
+            if(this.memories.length>15)this.memories.shift()
+          }
+        }
+      }
+    })
+    this.pendingSignals=this.pendingSignals.filter(s=>tick<s.arriveAt+1)
+
+    let fx=0,fy=0
+    const nearby=others.filter(o=>{
+      if(o===this||!o.alive)return false
+      const dx=o.x-this.x,dy=o.y-this.y
+      return dx*dx+dy*dy<180*180
+    })
+
+    nearby.forEach(other=>{
+      const dx=other.x-this.x,dy=other.y-this.y
+      const dist=Math.sqrt(dx*dx+dy*dy)||0.1
+      const nx=dx/dist,ny=dy/dist
+
+      // 중력 (질량)
+      const g=(this.mass*other.mass*0.0004)/(dist*dist)
+      fx+=nx*g;fy+=ny*g
+
+      // 전자기력
+      if(dist<70){const em=(this.charge*other.charge*4)/(dist*dist);fx-=nx*em*0.012;fy-=ny*em*0.012}
+
+      // 강력
+      if(dist<8){fx+=nx*0.8;fy+=ny*0.8}
+
+      // 마찰 — 가까운 존재와의 저항
+      // 속도 차이가 마찰을 만든다
+      if(dist<40){
+        const relVx=other.vx-this.vx,relVy=other.vy-this.vy
+        const frictionCoeff=0.003*(1-dist/40)
+        fx+=relVx*frictionCoeff;fy+=relVy*frictionCoeff
+      }
+
+      // 반발
+      const minD=this.radius+other.radius+1
+      if(dist<minD){
+        // 보존 법칙 — 운동량 교환
+        const m1=this.mass,m2=other.mass
+        const dvx=(2*m2/(m1+m2))*(other.vx-this.vx)
+        const dvy=(2*m2/(m1+m2))*(other.vy-this.vy)
+        fx+=dvx*0.3;fy+=dvy*0.3
+        fx-=nx*0.3;fy-=ny*0.3
+      }
+
+      // 만남
+      if(dist<18){
+        this.meetCount++
+        this.energy+=0.05*ELEM[other.element].energy
+        this.temperature=Math.min(100,this.temperature+0.1)
+
+        // 복사 — 뜨거운 별이 빛을 방출한다
+        if(this.type==='star'&&this.temperature>1000&&Math.random()<0.05){
+          const a=Math.random()*Math.PI*2
+          lights.push(new Light(this.x,this.y,a,this.hue,this.temperature))
+          this.temperature=Math.max(3,this.temperature*0.9999)
+        }
+
+        // 색이 언어다 — 같은 색 그룹만 깊은 교류
+        const sameColor=Math.abs(this.colorLang-other.colorLang)<=1
+        if(sameColor){
+          // 기억 공유
+          if(other.memDepth>0&&Math.random()<0.006){
+            const m=other.memories[Math.floor(Math.random()*other.memories.length)]
+            if(m){this.memories.push({...m,fade:(m.fade||1)*0.6});if(this.memories.length>15)this.memories.shift()}
+          }
+          // 나이가 판단력 — 성숙한 존재가 더 효율적으로 에너지를 써요
+          this.energy+=0.01*this.maturity
+        }
+
+        // 핵융합 — 소수 번째 만남
+        if(PRIMES.has(this.meetCount)&&Math.random()<0.2){
+          const r=fuse(this.element,other.element)
+          if(r&&r!==this.element){
+            this.element=r;const re=ELEM[r]
+            this.mass=re.mass;this.charge=re.charge
+            this.radius=2+Math.sqrt(re.mass)*0.2
+            this.flash=1;globalElems.add(r)
+            this.temperature=Math.min(10000000,this.temperature*2)
+            showMsg(`⚛ ${r} — 핵융합`)
+          }
+        }
+      }
+
+      // 기억이 중력이다
+      const mg=other.memDepth*0.003/(dist*0.12)
+      fx+=nx*mg;fy+=ny*mg
+
+      // 모순이 에너지
+      const dot=this.vx*other.vx+this.vy*other.vy
+      if(dot<-0.4&&dist<20){fx-=nx*1.2;fy-=ny*1.2;this.resonance=Math.min(1,this.resonance+0.4)}
+    })
+
+    // 꿈이 경로를 바꾼다
+    dreams.filter(d=>d.alive).forEach(d=>{
+      const dx=this.x-d.x,dy=this.y-d.y,dist=Math.sqrt(dx*dx+dy*dy)
+      if(dist<d.r){fx+=Math.cos(d.dir)*0.04;fy+=Math.sin(d.dir)*0.04}
+    })
+
+    // 이상 현상
+    anomalies.filter(a=>a.alive).forEach(a=>a.affect(this))
+
+    // 고독이 속도를 높인다
+    if(nearby.length===0){fx+=(Math.random()-0.5)*0.15;fy+=(Math.random()-0.5)*0.15}
+
+    // 빈자리 — 적게 모인 곳으로 끌린다
+    if(nearby.length<3){fx+=(Math.random()-0.5)*0.06;fy+=(Math.random()-0.5)*0.06}
+
+    // ── 새 조건들 ─────────────────────────────────
+
+    // 1. 상태 변화 — 온도에 따라 solid/liquid/gas
+    const prevPhase = this.phase
+    if(this.temperature < 200) this.phase = 'solid'
+    else if(this.temperature < 2000) this.phase = 'liquid'
+    else this.phase = 'gas'
+    if(prevPhase !== this.phase) showMsg(`${this.phase === 'solid' ? '🧊 고체' : this.phase === 'liquid' ? '💧 액체' : '💨 기체'}`)
+
+    // 고체 — 거의 안 움직인다
+    if(this.phase === 'solid') { this.vx *= 0.3; this.vy *= 0.3 }
+    // 기체 — 자유롭게 퍼진다
+    if(this.phase === 'gas') { this.vx += (Math.random()-0.5)*0.2; this.vy += (Math.random()-0.5)*0.2 }
+
+    // 2. 파동 간섭 — 파동을 가지고 만나면 보강/상쇄
+    this.wavePhase += 0.05
+    nearby.forEach(other=>{
+      const dx=other.x-this.x,dy=other.y-this.y,dist=Math.sqrt(dx*dx+dy*dy)||0.1
+      if(dist>60) return
+      const nx=dx/dist,ny=dy/dist
+      const phaseDiff = this.wavePhase - other.wavePhase
+      const interference = Math.cos(phaseDiff)  // 1=보강, -1=상쇄
+      if(interference > 0.5) {
+        // 보강 간섭 — 서로 끌린다
+        fx += nx * interference * 0.05
+        fy += ny * interference * 0.05
+        this.energy += 0.001
+      } else if(interference < -0.5) {
+        // 상쇄 간섭 — 서로 밀어낸다
+        fx -= nx * Math.abs(interference) * 0.05
+        fy -= ny * Math.abs(interference) * 0.05
+      }
+    })
+
+    // 3. 엔트로피 — 시간이 지날수록 무질서해진다
+    this.order = Math.max(0, this.order - 0.0001)
+    if(Math.random() < (1-this.order)*0.01) {
+      // 무질서 — 방향이 흐트러진다
+      this.vx += (Math.random()-0.5) * (1-this.order) * 0.3
+      this.vy += (Math.random()-0.5) * (1-this.order) * 0.3
+    }
+    // 차갑고 조용하면 질서가 회복된다
+    if(this.temperature < 500 && nearby.length > 2) {
+      this.order = Math.min(1, this.order + 0.00005)
+    }
+
+    // 4. 공포가 밀어낸다 — 자기보다 훨씬 큰 존재를 피한다
+    nearby.forEach(other=>{
+      if(!other.alive) return
+      if(other.mass > this.mass * 3) {
+        const dx=other.x-this.x,dy=other.y-this.y,dist=Math.sqrt(dx*dx+dy*dy)||0.1
+        if(dist < 80) {
+          const fear = (other.mass/this.mass) * 0.002
+          fx -= (dx/dist)*fear; fy -= (dy/dist)*fear
+          this.fearOf = other.id || other
+        }
+      }
+    })
+
+    // 5. 호기심 — 아직 만나보지 않은 색의 존재를 향해
+    if(this.curiosity > 0.3) {
+      nearby.forEach(other=>{
+        if(!other.alive) return
+        const otherColorGroup = Math.floor(other.hue/60)
+        const dx2=other.x-this.x,dy2=other.y-this.y,dist2=Math.sqrt(dx2*dx2+dy2*dy2)||0.1
+        if(!this.metColors.has(otherColorGroup) && dist2 < 100) {
+          fx += (dx2/dist2)*0.02*this.curiosity
+          fy += (dy2/dist2)*0.02*this.curiosity
+        }
+        // 만나면 호기심이 채워진다
+        if(dist2 < 20) {
+          this.metColors.add(otherColorGroup)
+          this.curiosity = Math.max(0.1, this.curiosity - 0.05)
+        }
+      })
+    }
+
+    // 6. 반복이 패턴을 만든다 — 같은 경로를 반복하면 흔적이 굳어진다
+    const gridX = Math.floor(this.x/30), gridY = Math.floor(this.y/30)
+    const stamp = this.pathStamps.find(s=>s.gx===gridX&&s.gy===gridY)
+    if(stamp) {
+      stamp.count++
+      // 자주 지나간 곳 — 더 끌린다 (습관)
+      if(stamp.count > 5) {
+        const centerX = gridX*30+15, centerY = gridY*30+15
+        const dx=centerX-this.x, dy=centerY-this.y
+        const dist=Math.sqrt(dx*dx+dy*dy)||0.1
+        fx += (dx/dist)*0.03*Math.min(1,stamp.count/20)
+        fy += (dy/dist)*0.03*Math.min(1,stamp.count/20)
+      }
+    } else {
+      this.pathStamps.push({gx:gridX,gy:gridY,count:1})
+      if(this.pathStamps.length > 30) this.pathStamps.shift()
+    }
+
+    // 7. 선택이 분기를 만든다 — 가끔 평행 존재가 나타났다 사라진다
+    if(Math.random() < 0.0003 && beings.filter(b=>b.alive).length < 1000) {
+      // 평행 자아 — 나와 비슷하지만 다른 선택을 한다
+      const twin = new Being(
+        this.x + (Math.random()-0.5)*10,
+        this.y + (Math.random()-0.5)*10,
+        { hue: (this.hue+180)%360, element: this.element, temperature: this.temperature }
+      )
+      twin.vx = -this.vx; twin.vy = -this.vy  // 반대 방향
+      twin.memories = [...this.memories.slice(-2)]
+      twin.maxParallelAge = tick + 100  // 100틱 후 사라진다
+      beings.push(twin)
+      showMsg('분기 — 평행 존재')
+    }
+    // 평행 존재는 시간이 지나면 사라진다
+    if(this.maxParallelAge && tick > this.maxParallelAge) {
+      this.alive = false
+      ghosts.push(new Ghost(this.x, this.y, this.hue))
+      return
+    }
+
+    // ── 추가 조건들 ───────────────────────────────
+
+    // 8. 자전 — 각자 자기 축으로 돈다
+    this.spin = (this.spin || (Math.random()-0.5)*0.05)
+    this.spinAngle = ((this.spinAngle||0) + this.spin) % (Math.PI*2)
+
+    // 9. 공전 — 가장 가까운 무거운 존재 주위를 돈다
+    const heaviest = nearby.filter(o=>o.mass>this.mass*2)
+      .sort((a,b)=>{
+        const da=Math.sqrt((a.x-this.x)**2+(a.y-this.y)**2)
+        const db=Math.sqrt((b.x-this.x)**2+(b.y-this.y)**2)
+        return da-db
+      })[0]
+    if(heaviest) {
+      const dx=heaviest.x-this.x, dy=heaviest.y-this.y
+      const dist=Math.sqrt(dx*dx+dy*dy)||0.1
+      if(dist < 100) {
+        // 접선 방향으로 힘이 생긴다 — 공전
+        const tangentX=-dy/dist, tangentY=dx/dist
+        const orbitStrength=0.004*(heaviest.mass/this.mass)
+        fx+=tangentX*orbitStrength
+        fy+=tangentY*orbitStrength
+      }
+    }
+
+    // 10. 조석력 — 가까운 큰 존재가 늘어나게 만든다
+    nearby.forEach(other=>{
+      if(other.mass < this.mass*3) return
+      const dx=other.x-this.x,dy=other.y-this.y,dist=Math.sqrt(dx*dx+dy*dy)||0.1
+      if(dist<60) {
+        const tidal=other.mass/(dist*dist*dist)*500
+        // 가까운 쪽이 더 끌리고 먼 쪽이 덜 끌린다 — 늘어남
+        fx+=dx/dist*tidal*0.001
+        fy+=dy/dist*tidal*0.001
+        
+      }
+    })
+
+    // 11. 자기장 — 움직이는 전하가 자기장을 만든다
+    if(Math.abs(this.charge)>0) {
+      const speed=Math.sqrt(this.vx*this.vx+this.vy*this.vy)
+      const magneticField=this.charge*speed*0.1  // 속도와 전하가 자기장 결정
+      nearby.forEach(other=>{
+        if(!other.charge||other===this) return
+        const dx=other.x-this.x,dy=other.y-this.y,dist=Math.sqrt(dx*dx+dy*dy)||0.1
+        if(dist<80) {
+          // 자기력 — 로렌츠 힘 (속도의 수직 방향)
+          const lorentz=magneticField*other.charge/dist*0.005
+          fx+=(-other.vy/dist)*lorentz
+          fy+=(other.vx/dist)*lorentz
+        }
+      })
+    }
+
+    // 12. 신뢰가 마찰을 줄인다 — 자주 만난 존재와는 더 쉽게 움직인다
+    if(!this.trusted) this.trusted=new Map()
+    nearby.forEach(other=>{
+      const dx=other.x-this.x,dy=other.y-this.y,dist=Math.sqrt(dx*dx+dy*dy)||0.1
+      if(dist<25) {
+        const trust=this.trusted.get(other)||0
+        this.trusted.set(other, Math.min(100,trust+0.1))
+        if(trust>20) {
+          // 신뢰가 높으면 마찰이 줄어 더 부드럽게 움직인다
+          const ease=trust/100*0.003
+          fx+=(other.vx-this.vx)*ease
+          fy+=(other.vy-this.vy)*ease
+        }
+      }
+    })
+
+    // 13. 슬픔이 무거워진다 — 기억이 사라지면 잠깐 느려진다
+    const prevMemCount=this._prevMemCount||0
+    if(this.memDepth < prevMemCount-0.5) {
+      this.sadness=(this.sadness||0)+0.3
+      if(this.sadness>0.05&&Math.random()<0.001) showMsg('기억이 사라졌다')
+    }
+    this._prevMemCount=this.memDepth
+    if(this.sadness) {
+      this.sadness=Math.max(0,this.sadness-0.005)
+      this.vx*=(1-this.sadness*0.3); this.vy*=(1-this.sadness*0.3)
+    }
+
+    // 14. 노래가 동기화한다 — 가까운 존재들의 파동이 점점 같아진다
+    nearby.forEach(other=>{
+      const dx=other.x-this.x,dy=other.y-this.y,dist=Math.sqrt(dx*dx+dy*dy)||0.1
+      if(dist<40) {
+        const phaseDiff=this.wavePhase-other.wavePhase
+        this.wavePhase-=phaseDiff*0.002
+        if(Math.abs(phaseDiff)<0.1) {
+          this.resonance=Math.min(1,this.resonance+0.01)
+          // 언어가 진화한다 — 오래 함께한 그룹이 같은 파동 패턴을 만든다
+          if(!this.groupLang) this.groupLang=this.wavePhase
+          this.groupLang=this.groupLang*0.999+other.wavePhase*0.001
+        }
+      }
+    })
+
+    // 15. 가상의 블랙홀 — 빈자리가 0이 되는 순간
+    // 완전함에 도달한 것. 더 이상 질문이 없다. 기억이 꽉 찼다.
+    // 완전한 평형 = 수렴
+    if(this.type!=='blackhole'&&this.type!=='star') {
+      const isComplete = this.gap < 0.05 && this.memDepth > 12 && this.curiosity < 0.15
+      if(isComplete){
+        this.type='blackhole'
+        this.radius=Math.min(20,this.radius*1.5)
+        showMsg('◉ 완전함 — 수렴한다')
+      }
+    }
+    if(this.type==='blackhole'){
+      // 안으로 수렴한다 — 밖으로 아무것도 방출하지 않는다
+      // 빛도 기억도 질문도 내보내지 않는다
+      nearby.forEach(other=>{
+        const dx=this.x-other.x,dy=this.y-other.y,dist=Math.sqrt(dx*dx+dy*dy)||0.1
+        // 빈자리가 큰 것만 끌어당긴다 — 비어있는 것이 채워진 것에 끌린다
+        if(other.gap > 0.3) {
+          const pull=other.gap*0.5/(dist*0.1)
+          other.vx+=(dx/dist)*pull*0.002
+          other.vy+=(dy/dist)*pull*0.002
+        }
+      })
+      // 빛 입자는 흡수한다
+      lights.forEach(l=>{
+        const dx=this.x-l.x,dy=this.y-l.y,dist=Math.sqrt(dx*dx+dy*dy)||0.1
+        if(dist<this.radius*2) l.alive=false
+      })
+      // 블랙홀 자신은 — 천천히 증발한다 (호킹 복사처럼)
+      // 완전함도 영원하지 않다
+      if(Math.random()<0.0003){
+        this.gap = 0.1  // 빈자리가 다시 생긴다
+        this.type = 'seed'
+        this.memories = []
+        showMsg('◉ 다시 열렸다')
+      }
+    }
+
+    // 16. 시간 팽창 — 무거운 존재 근처에서 시간이 느려진다 (일반상대성이론)
+    let timeDilation=1.0
+    nearby.forEach(other=>{
+      if(other.mass<50) return
+      const dx=other.x-this.x,dy=other.y-this.y,dist=Math.sqrt(dx*dx+dy*dy)||0.1
+      if(dist<80){
+        // 무거울수록, 가까울수록 시간이 느려진다
+        const gravitationalPotential=other.mass/(dist*10)
+        timeDilation=Math.max(0.1,timeDilation-gravitationalPotential)
+      }
+    })
+
+    // 17. 충격파 — 초신성 터질 때 멀리도 영향을 준다
+    // (_nova 에서 처리)
+
+    // 18. 망각이 자유를 준다 — 기억이 없을수록 더 멀리 갈 수 있다
+    if(this.memDepth < 1) {
+      // 기억이 거의 없으면 — 속도 제한이 풀린다
+      this.vx*=1.02; this.vy*=1.02
+    }
+
+    // 공명하면 시간이 느려진다
+    const tf=(1-this.resonance*0.55)*timeDilation
+
+    // 임계 발화
+    if(this.type==='seed'&&this.energy>=this.threshold){
+      this.type='star';this.flash=1
+      this.temperature=Math.min(10000000,this.temperature*100)  // 별이 되면 온도 폭발
+      showMsg('✦ 별')
+      // 빛 방출 — 별이 되는 순간
+      for(let i=0;i<6;i++){
+        const a=(i/6)*Math.PI*2
+        lights.push(new Light(this.x,this.y,a,this.hue,this.temperature))
+      }
+    }
+    if(this.type==='star'&&this.energy>this.threshold*5&&Math.random()<0.0002){this._nova();return}
+
+    // 온도 * 성숙도가 속도에 영향
+    const speedMod=tempFactor*(0.7+this.maturity*0.3)
+    this.vx=(this.vx+fx)*tf*speedMod;this.vy=(this.vy+fy)*tf*speedMod
+
+    const mv=2/(1+this.mass*0.015),spd=Math.sqrt(this.vx*this.vx+this.vy*this.vy)
+    if(spd>mv){this.vx=this.vx/spd*mv;this.vy=this.vy/spd*mv}
+    this.vx*=0.975;this.vy*=0.975
+    this.x+=this.vx;this.y+=this.vy
+
+    const m=this.radius+2
+    if(this.x<m){this.x=m;this.vx=Math.abs(this.vx)*0.4}
+    if(this.x>canvas.width-m){this.x=canvas.width-m;this.vx=-Math.abs(this.vx)*0.4}
+    if(this.y<m){this.y=m;this.vy=Math.abs(this.vy)*0.4}
+    if(this.y>canvas.height-m){this.y=canvas.height-m;this.vy=-Math.abs(this.vy)*0.4}
+
+    // 침묵이 창조
+    if(tick%100===0&&Math.random()<0.15&&beings.filter(b=>b.alive).length<1000){
+      beings.push(new Being(this.x+(Math.random()-0.5)*50,this.y+(Math.random()-0.5)*50,{hue:this.hue,temperature:this.temperature*0.5}))
+      showMsg('침묵에서')
+    }
+
+    // ── 새 조건들 2 ────────────────────────────────
+
+    // 19. 생명 — 충분한 조건이 갖춰지면 스스로 복제한다
+    // 진짜 복제 — 자신의 조건을 그대로 전달한다
+    if(!this._lifeScore) this._lifeScore=0
+    const lifeConditions = (this.type==='star'?1:0) + (this.memDepth>3?1:0) +
+      (this.connections.size>2?1:0) + (this.temperature>1000&&this.temperature<50000?1:0)
+    this._lifeScore+=lifeConditions*0.001
+    if(this._lifeScore>1&&Math.random()<0.002&&beings.filter(b=>b.alive).length<1000){
+      const child=new Being(
+        this.x+(Math.random()-0.5)*30,
+        this.y+(Math.random()-0.5)*30,
+        {
+          hue: this.hue+(Math.random()-0.5)*20,  // 조금 변이한다
+          element: this.element,
+          temperature: this.temperature*0.6,
+          gap: this.gap+(Math.random()-0.5)*0.1
+        }
+      )
+      // 부모의 기억 일부를 전달한다 — 유전
+      child.memories=[...this.memories.slice(-3)]
+      child.threshold=this.threshold+(Math.random()-0.5)*0.5  // 약간 다른 임계점
+      beings.push(child)
+      this._lifeScore=0
+      showMsg('🧬 복제됐다')
+    }
+
+    // 20. 면역 — 한 번 만난 이상 현상을 기억한다
+    if(!this.immunity) this.immunity=new Set()
+    anomalies.filter(a=>a.alive).forEach(a=>{
+      const dx=a.x-this.x,dy=a.y-this.y,dist=Math.sqrt(dx*dx+dy*dy)||0.1
+      if(dist<a.r*2){
+        if(!this.immunity.has(a.type)){
+          // 처음 만나면 — 영향을 받는다
+          this.immunity.add(a.type)
+        }
+        // 이미 알면 — 영향이 절반
+        // (anomaly affect에서 이미 처리됨, 여기선 기억만)
+      }
+    })
+
+    // 21. 목적 — 기억이 가리키는 방향으로 움직인다
+    if(this.memories.length>3){
+      // 가장 최근 기억의 출처를 향한다
+      const recent=this.memories[this.memories.length-1]
+      if(recent&&recent.source) {
+        const dx=recent.source.x-this.x, dy=recent.source.y-this.y
+        const dist=Math.sqrt(dx*dx+dy*dy)||0.1
+        fx+=(dx/dist)*0.015
+        fy+=(dy/dist)*0.015
+      }
+    }
+
+    // 22. 죽음에 대한 앎 — 에너지가 줄면 생존 행동이 달라진다
+    if(this.energy < this.threshold*0.3 && this.type==='star') {
+      // 에너지가 위험하게 낮다 — 더 적극적으로 움직인다
+      const nearest=nearby.filter(o=>o.energy>this.energy)
+        .sort((a,b)=>{
+          const da=Math.sqrt((a.x-this.x)**2+(a.y-this.y)**2)
+          const db=Math.sqrt((b.x-this.x)**2+(b.y-this.y)**2)
+          return da-db
+        })[0]
+      if(nearest) {
+        const dx=nearest.x-this.x,dy=nearest.y-this.y,dist=Math.sqrt(dx*dx+dy*dy)||0.1
+        fx+=(dx/dist)*0.05
+        fy+=(dy/dist)*0.05
+      }
+    }
+
+    // 23. 세대와 진화 — 자식이 부모보다 조금 다르다
+    // (복제 시 변이로 구현됨)
+    // 세대 카운터
+    if(!this.generation) this.generation=0
+    // 오래된 존재일수록 — 더 안정적이다
+    if(this.generation>3) {
+      this.vx*=0.998; this.vy*=0.998  // 조상의 안정성
+    }
+
+
+    // 24. 카오스 — 나비 효과
+    if(tick % 73 === Math.floor((this.bornAt||0) % 73)) {
+      this.vx += (Math.random()-0.5) * 0.003
+      this.vy += (Math.random()-0.5) * 0.003
+    }
+
+    // 25. 창발
+    if(!this._es) this._es=0
+    const ef=(this.type==='star'?1:0)+(this.memDepth>5?1:0)+(this.resonance>0.5?1:0)+(nearby.length>5?1:0)
+    this._es+=ef*0.0001
+    if(this._es>1&&Math.random()<0.01){
+      const oc=[
+        ()=>{this.hue=(this.hue+90)%360;showMsg('창발 — 색')},
+        ()=>{this.threshold*=0.5;showMsg('창발 — 임계점')},
+        ()=>{this.gap=0.9;showMsg('창발 — 빈자리')},
+        ()=>{this.wavelength*=2;showMsg('창발 — 파장')},
+      ]
+      oc[Math.floor(Math.random()*oc.length)]()
+      this._es=0
+    }
+
+    // 26. 공진 — 주파수 비가 정수에 가까우면 폭발적 반응
+    nearby.forEach(other=>{
+      if(!other.alive) return
+      const fr=this.wavelength/(other.wavelength||1)
+      if(Math.abs(fr-Math.round(fr))<0.05){
+        this.resonance=Math.min(1,this.resonance+0.04)
+        this.energy+=0.008
+        if(this.resonance>0.8&&Math.random()<0.01){
+          const dx=other.x-this.x,dy=other.y-this.y,d=Math.sqrt(dx*dx+dy*dy)||0.1
+          fx-=(dx/d)*0.5;fy-=(dy/d)*0.5
+          showMsg('공진!')
+        }
+      }
+    })
+
+    // 27. 잠재 — 보류 상태. 눌려있다가 드러난다
+    if(!this.latent)this.latent={s:Math.random(),t:Math.floor(Math.random()*4),p:0}
+    const dc=(this.resonance>0.3?1:0)+(this.memDepth>5?1:0)+(this.energy>3?1:0)
+    this.latent.p=Math.min(1,this.latent.p+dc*0.001)
+    if(dc===0&&this.latent.p>0.5){
+      this.latent.p=Math.max(0,this.latent.p-0.005)
+      if(this.latent.p<0.1&&Math.random()<0.005){
+        const le=[
+          ()=>{this.gap=Math.max(0.05,this.gap-0.3)},
+          ()=>{this.vx*=3;this.vy*=3},
+          ()=>{this.energy+=1},
+          ()=>{this.resonance=0.8},
+        ]
+        le[this.latent.t]()
+        showMsg('잠재가 드러났다')
+        this.latent.p=0
+      }
+    }
+
+    // 28. 긴장 — 모순이 에너지를 만든다 (구조적)
+    if(!this.tension)this.tension=0
+    const att=nearby.filter(o=>o.gap>0.5).length
+    const rep=nearby.filter(o=>Math.abs((this.charge||0)-(o.charge||0))>1).length
+    if(att>0&&rep>0){this.tension=Math.min(1,this.tension+0.01);this.energy+=this.tension*0.005}
+    else this.tension=Math.max(0,this.tension-0.005)
+
+    // 29. 여백 — 살아있는 것이다
+    // 닿으면 채워진다. 닿지 않으면 비어있다. 넘치면 흘러 넘친다.
+    if(this._voidCap===undefined) this._voidCap = 0.3 + Math.random()*0.5  // 각자 다른 용량
+    if(this._voidFill===undefined) this._voidFill = Math.random()*this._voidCap
+
+    // 닿음이 여백을 채운다
+    const touchCount = nearby.filter(o=>{
+      const dx=o.x-this.x,dy=o.y-this.y
+      return Math.sqrt(dx*dx+dy*dy)<20
+    }).length
+    if(touchCount>0){
+      this._voidFill = Math.min(this._voidCap, this._voidFill + touchCount*0.001)
+    } else {
+      // 닿지 않으면 천천히 비워진다
+      this._voidFill = Math.max(0, this._voidFill - 0.0003)
+    }
+
+    // 넘치면 — 흘러 넘친다
+    if(this._voidFill >= this._voidCap) {
+      // 넘친 것이 새로운 존재를 만든다
+      if(Math.random()<0.1 && beings.filter(b=>b.alive).length<1000){
+        const overflow = new Being(
+          this.x+(Math.random()-0.5)*25,
+          this.y+(Math.random()-0.5)*25,
+          { hue:this.hue+(Math.random()-0.5)*30, temperature:this.temperature*0.4,
+            gap: this._voidCap * 0.8 }  // 자식의 용량은 부모와 비슷하다
+        )
+        beings.push(overflow)
+        showMsg('여백이 넘쳤다')
+      }
+      this._voidFill = 0  // 넘친 후 — 다시 비워진다
+    }
+
+    // 여백의 상태가 gap에 반영된다
+    this.gap = Math.max(0.05, this._voidCap - this._voidFill)
+
+
+    // 흔적
+    this.trail.push({x:this.x,y:this.y})
+    if(this.trail.length>35)this.trail.shift()
+
+    this.connections=new Set()
+  }
+
+  _nova(){
+    this.alive=false
+    if(this.memDepth>0)ghosts.push(new Ghost(this.x,this.y,this.hue))
+    showMsg('💥 초신성')
+
+    // 충격파 — 멀리 있는 존재들도 날아간다
+    beings.forEach(b=>{
+      if(!b.alive) return
+      const dx=b.x-this.x,dy=b.y-this.y
+      const dist=Math.sqrt(dx*dx+dy*dy)||0.1
+      if(dist<200){
+        const shockStrength=(200-dist)/200 * 2
+        b.vx+=(dx/dist)*shockStrength
+        b.vy+=(dy/dist)*shockStrength
+        b.temperature=Math.min(10000000,b.temperature*(1+shockStrength))
+        b.flash=Math.min(1,shockStrength)
+      }
+    })
+    // 빛도 충격파로 퍼진다
+    for(let i=0;i<12;i++){
+      const a=(i/12)*Math.PI*2
+      lights.push(new Light(this.x,this.y,a,this.hue,5000000))
+    }
+
+    const elems=['H','He','C','O']
+    for(let i=0;i<5;i++){
+      const a=(i/5)*Math.PI*2
+      const b=new Being(this.x+Math.cos(a)*20,this.y+Math.sin(a)*20,{
+        element:elems[Math.floor(Math.random()*4)],spd:1.5,
+        vx:Math.cos(a)*1.5,vy:Math.sin(a)*1.5,hue:this.hue,
+        temperature:this.temperature*0.8
+      })
+      beings.push(b)
+    }
+  }
+
+  draw(){
+    if(!this.alive)return
+    const mem=Math.min(1,this.memDepth/10)
+    // 온도 색상 계산됨
+
+    // 흔적
+    if(this.trail.length>1){
+      this.trail.forEach((p,i)=>{
+        if(i===0)return
+        const a=(i/this.trail.length)*0.12
+        ctx.beginPath();ctx.moveTo(this.trail[i-1].x,this.trail[i-1].y);ctx.lineTo(p.x,p.y)
+        ctx.strokeStyle=`hsla(${this.hue},60%,50%,${a})`;ctx.lineWidth=0.5;ctx.stroke()
+      })
+    }
+
+    // 연결선 — 같은 색 언어 그룹은 더 밝게
+    beings.filter(o=>o.alive&&o!==this).forEach(other=>{
+      const dx=other.x-this.x,dy=other.y-this.y,d=Math.sqrt(dx*dx+dy*dy)
+      if(d>45)return
+      const sameColor=Math.abs(this.colorLang-other.colorLang)<=1
+      const str=Math.min(mem,Math.min(1,other.memDepth/10))*(sameColor?0.4:0.1)
+      ctx.beginPath();ctx.moveTo(this.x,this.y);ctx.lineTo(other.x,other.y)
+      ctx.strokeStyle=`rgba(50,40,150,${str*(1-d/45)})`;ctx.lineWidth=str*1.5;ctx.stroke()
+    })
+
+    // 온도 글로우 — 온도에 따라 색이 달라진다 (흑체복사)
+    // 차가우면 붉다, 뜨거우면 파랗다
+    if(this.temperature>500){
+      const t=Math.min(1,Math.log10(this.temperature)/7)
+      const r=Math.floor(255*(1-t*0.7))
+      const b2=Math.floor(255*t)
+      const tg=ctx.createRadialGradient(this.x,this.y,0,this.x,this.y,this.radius*4)
+      tg.addColorStop(0,`rgba(${r},${Math.floor(r*0.4)},${b2},${t*0.25})`)
+      tg.addColorStop(1,'transparent')
+      ctx.beginPath();ctx.arc(this.x,this.y,this.radius*4,0,Math.PI*2)
+      ctx.fillStyle=tg;ctx.fill()
+    }
+
+    // 기억 글로우
+    if(this.type==='star'||mem>0.1||this.flash>0.1||this.resonance>0.1){
+      const gr=this.radius*(2+mem*4+this.flash*4+this.resonance*2)
+      const g=ctx.createRadialGradient(this.x,this.y,0,this.x,this.y,gr)
+      g.addColorStop(0,`hsla(${this.hue},80%,70%,${(mem+this.flash+this.resonance*0.5)*0.35})`)
+      g.addColorStop(1,'transparent')
+      ctx.beginPath();ctx.arc(this.x,this.y,gr,0,Math.PI*2);ctx.fillStyle=g;ctx.fill()
+    }
+
+    // 가상 블랙홀 시각화 — 완전함의 모습
+    if(this.type==='blackhole'){
+      // 완전히 채워진 것 — 가장 어둡고 가장 조용하다
+      const g=ctx.createRadialGradient(this.x,this.y,0,this.x,this.y,this.radius*2.5)
+      g.addColorStop(0,'rgba(0,0,0,0.98)')
+      g.addColorStop(0.6,'rgba(10,0,30,0.8)')
+      g.addColorStop(1,'transparent')
+      ctx.beginPath();ctx.arc(this.x,this.y,this.radius*2.5,0,Math.PI*2)
+      ctx.fillStyle=g;ctx.fill()
+      // 경계 — 완전함의 가장자리는 희미하게 빛난다
+      ctx.beginPath();ctx.arc(this.x,this.y,this.radius,0,Math.PI*2)
+      ctx.strokeStyle=`rgba(100,80,200,0.3)`;ctx.lineWidth=1;ctx.stroke()
+      return
+    }
+    if(this.type==='star'){
+      const g=ctx.createRadialGradient(this.x,this.y,0,this.x,this.y,this.radius)
+      g.addColorStop(0,'#fff');g.addColorStop(0.4,ELEM[this.element].color);g.addColorStop(1,ELEM[this.element].color+'40')
+      ctx.fillStyle=g
+    } else if(this.phase==='solid') {
+      ctx.fillStyle=`hsla(${this.hue},80%,${30+mem*30}%,0.95)`
+    } else if(this.phase==='liquid') {
+      ctx.fillStyle=`hsla(${this.hue},60%,${20+mem*45}%,0.85)`
+    } else {
+      ctx.fillStyle=`hsla(${this.hue},40%,${15+mem*30}%,0.5)`  // 기체 — 투명하고 흐릿
+    }
+    ctx.fill()
+
+    // 파동 시각화 — 파동이 겉에서 출렁인다
+    const waveR=this.radius+Math.sin(this.wavePhase)*2+2
+    ctx.beginPath();ctx.arc(this.x,this.y,waveR,0,Math.PI*2)
+    ctx.strokeStyle=`hsla(${this.hue},60%,60%,0.06)`;ctx.lineWidth=0.3;ctx.stroke()
+
+    // 엔트로피 표시 — 무질서할수록 경계가 흐릿하다
+    if(this.order < 0.5) {
+      for(let i=0;i<3;i++) {
+        const offset=(1-this.order)*4
+        ctx.beginPath();ctx.arc(this.x+(Math.random()-0.5)*offset,this.y+(Math.random()-0.5)*offset,this.radius*0.5,0,Math.PI*2)
+        ctx.fillStyle=`hsla(${this.hue},40%,50%,${(1-this.order)*0.1})`;ctx.fill()
+      }
+    }
+
+    // 자전 시각화 — 빠르게 도는 별은 테두리가 돈다
+    if(this.spin && Math.abs(this.spin)>0.02) {
+      ctx.beginPath()
+      ctx.arc(this.x,this.y,this.radius+1.5,this.spinAngle,this.spinAngle+Math.PI*1.5)
+      ctx.strokeStyle=`hsla(${this.hue},70%,60%,0.25)`;ctx.lineWidth=1;ctx.stroke()
+    }
+
+    // 지연 신호 대기중 표시
+    if(this.pendingSignals.length>0){
+      ctx.beginPath();ctx.arc(this.x,this.y,this.radius+2,0,Math.PI*2)
+      ctx.strokeStyle=`rgba(255,200,100,0.3)`;ctx.lineWidth=0.5;ctx.stroke()
+    }
+
+    // 기억 궤도
+    this.memories.slice(-5).forEach((m,i)=>{
+      const a=(i/5)*Math.PI*2+tick*0.018
+      const r=this.radius+5+i*1.8
+      ctx.beginPath();ctx.arc(this.x+Math.cos(a)*r,this.y+Math.sin(a)*r,0.7,0,Math.PI*2)
+      ctx.fillStyle=`hsla(${this.hue},80%,70%,${(m.fade||0.5)*0.5})`;ctx.fill()
+    })
+
+    // 이름 + 성숙도
+    if(this.name){
+      ctx.fillStyle=`hsla(${this.hue},60%,65%,${0.3+this.maturity*0.4})`
+      ctx.font=`${7+this.maturity*2}px DM Mono`;ctx.textAlign='center'
+      ctx.fillText(this.name,this.x,this.y-this.radius-2)
+    }
+  }
+}
+
+// ── 유틸 ──────────────────────────────────────────
+let msgTimer=null
+function showMsg(t){
+  const el=document.getElementById('msg');el.textContent=t;el.classList.add('show')
+  if(msgTimer)clearTimeout(msgTimer);msgTimer=setTimeout(()=>el.classList.remove('show'),2000)
+}
+
+function addBeing(x,y,opts){beings.push(new Being(x,y,opts));showMsg('존재')}
+function addQuestion(){questions.push(new Question(canvas.width*(0.1+Math.random()*0.8),canvas.height*(0.1+Math.random()*0.8)))}
+function addDream(){dreams.push(new Dream(canvas.width*(0.1+Math.random()*0.8),canvas.height*(0.1+Math.random()*0.8)));showMsg('꿈')}
+function addAnomaly(){anomalies.push(new Anomaly(canvas.width*(0.1+Math.random()*0.8),canvas.height*(0.1+Math.random()*0.8)));const t=anomalies[anomalies.length-1];const names={reversal:'반전',mirror:'거울',echo:'메아리',void:'공백'};showMsg(`이상: ${names[t.type]}`)}
+
+// 열 추가 — 특정 영역에 온도를 높인다
+function addHeat(){
+  const cx=canvas.width/2+(Math.random()-0.5)*canvas.width*0.6
+  const cy=canvas.height/2+(Math.random()-0.5)*canvas.height*0.6
+  beings.forEach(b=>{
+    if(!b.alive)return
+    const dx=b.x-cx,dy=b.y-cy,d=Math.sqrt(dx*dx+dy*dy)
+    if(d<100){b.temperature=Math.min(10000000,b.temperature*(1+5*(1-d/100)))}
+  })
+  // 열 시각화
+  const g=ctx.createRadialGradient(cx,cy,0,cx,cy,100)
+  g.addColorStop(0,'rgba(255,100,0,0.3)');g.addColorStop(1,'transparent')
+  ctx.beginPath();ctx.arc(cx,cy,100,0,Math.PI*2);ctx.fillStyle=g;ctx.fill()
+  showMsg('🔥 열이 퍼진다')
+}
+
+function bigBang(){
+  showMsg('🌌 빅뱅');
+  for(let i=0;i<30;i++){
+    const a=Math.random()*Math.PI*2,d=Math.random()*40
+    beings.push(new Being(canvas.width/2+Math.cos(a)*d,canvas.height/2+Math.sin(a)*d,{
+      element:'H',spd:0.5,vx:Math.cos(a)*(1+Math.random()*2),vy:Math.sin(a)*(1+Math.random()*2),temperature:50000
+    }))
+  }
+  for(let i=0;i<4;i++)addQuestion()
+  addDream();addAnomaly()
+}
+
+function togglePause(){paused=!paused;document.getElementById('btn-pause').textContent=paused?'재개':'정지'}
+function reset(){beings=[];questions=[];dreams=[];anomalies=[];ghosts=[];tick=0;globalElems=new Set(['H']);init()}
+
+canvas.addEventListener('click',e=>{const r=canvas.getBoundingClientRect();questions.push(new Question(e.clientX-r.left,e.clientY-r.top))})
+canvas.addEventListener('contextmenu',e=>{e.preventDefault();const r=canvas.getBoundingClientRect();addBeing(e.clientX-r.left,e.clientY-r.top)})
+
+// ── 루프 ──────────────────────────────────────────
+function loop(){
+  if(!paused){
+    tick++
+    ctx.fillStyle='rgba(1,1,8,0.18)';ctx.fillRect(0,0,canvas.width,canvas.height)
+
+    dreams.forEach(d=>{d.age++;if(d.age>d.maxAge)d.alive=false;d.draw()});dreams=dreams.filter(d=>d.alive)
+    anomalies.forEach(a=>{a.age++;if(a.age>a.maxAge)a.alive=false;a.draw()});anomalies=anomalies.filter(a=>a.alive)
+    ghosts.forEach(g=>{g.age++;g.draw()});ghosts=ghosts.filter(g=>g.age<g.maxAge)
+    questions.forEach(q=>{q.update();q.draw()});questions=questions.filter(q=>q.alive)
+
+    if(beings.length>2000)beings=beings.filter(b=>b.alive)
+    const alive=beings.filter(b=>b.alive)
+    alive.forEach(b=>b.update(alive))
+
+    // 빛 입자
+    if(lights.length>800)lights=lights.filter(l=>l.alive)
+    lights.forEach(l=>{l.update();l.draw()})
+
+    alive.forEach(b=>b.draw())
+
+    // 자동 이벤트
+    if(tick%180===0)addQuestion()
+    if(tick%450===0&&Math.random()<0.6)addDream()
+    if(tick%700===0&&Math.random()<0.4)addAnomaly()
+
+    // 통계
+    const stars=alive.filter(b=>b.type==='star').length
+    const totalMem=alive.reduce((s,b)=>s+b.memDepth,0)
+    const avgTemp=alive.length>0?alive.reduce((s,b)=>s+b.temperature,0)/alive.length:0
+    document.getElementById('s-n').textContent=alive.length
+    document.getElementById('s-star').textContent=stars
+    document.getElementById('s-elem').textContent=[...globalElems].join(' ')
+    document.getElementById('s-mem').textContent=Math.round(totalMem)
+    document.getElementById("s-temp").textContent=Math.round(avgTemp).toLocaleString()+"K"
+    document.getElementById('s-tick').textContent=tick
+
+    document.getElementById('laws-display').textContent=
+      '자연: 중력·전자기·강력·약력·핵융합·보존·마찰·복사·상태변화·파동간섭·엔트로피·자전·공전·조석력·자기장·시간팽창·충격파 / '+
+      '가상: 기억=중력·질문=빛·꿈=경로·고독=속도·공명=느림·모순=에너지·침묵=창조·유령기억·가상블랙홀 / '+
+      '새: 온도·거리=시간·색=언어·나이·공포·호기심·반복=패턴·신뢰·슬픔·노래·망각=자유·생명복제·면역·목적·죽음앎·세대진화'
+  }
+  requestAnimationFrame(loop)
+}
+
+function init(){
+  canvas.width=canvas.offsetWidth;canvas.height=canvas.offsetHeight
+  if(beings.length===0){
+    for(let i=0;i<20;i++)beings.push(new Being())
+    for(let i=0;i<3;i++)questions.push(new Question(canvas.width*(0.2+Math.random()*0.6),canvas.height*(0.2+Math.random()*0.6)))
+    addDream();addDream();addAnomaly()
+  }
+}
+
+window.addEventListener('resize',init)
+init();loop()
+</script>
+</body>
+</html>

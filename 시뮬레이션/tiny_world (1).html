@@ -1,0 +1,504 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>가장 작은 가상 세계</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400&display=swap');
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: #02020a;
+    color: #8080b0;
+    font-family: 'DM Mono', monospace;
+    height: 100vh;
+    display: grid;
+    grid-template-columns: 280px 1fr;
+  }
+
+  /* 왼쪽 — 규칙 패널 */
+  .panel {
+    border-right: 1px solid #111128;
+    padding: 1.5rem 1.2rem;
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+    overflow-y: auto;
+  }
+
+  .panel-title {
+    font-size: 0.65rem;
+    letter-spacing: 0.2em;
+    color: #333360;
+    padding-bottom: 0.8rem;
+    border-bottom: 1px solid #111128;
+  }
+
+  .rule-group { display: flex; flex-direction: column; gap: 0.6rem; }
+  .rule-label { font-size: 0.6rem; color: #333360; letter-spacing: 0.1em; }
+
+  .rule-row {
+    display: flex;
+    align-items: center;
+    gap: 0.8rem;
+    font-size: 0.65rem;
+  }
+
+  .rule-name { color: #5050a0; width: 70px; flex-shrink: 0; }
+
+  input[type=range] {
+    flex: 1;
+    height: 2px;
+    background: #1a1a38;
+    outline: none;
+    -webkit-appearance: none;
+  }
+  input[type=range]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 10px; height: 10px;
+    border-radius: 50%;
+    background: #5050a0;
+    cursor: pointer;
+  }
+  input[type=range]:hover::-webkit-slider-thumb { background: #8070ff; }
+
+  .val { color: #8080b0; width: 35px; text-align: right; font-size: 0.6rem; }
+
+  select {
+    background: #0a0a1a;
+    border: 1px solid #1a1a38;
+    color: #6060a0;
+    padding: 0.2rem 0.4rem;
+    font-family: 'DM Mono', monospace;
+    font-size: 0.6rem;
+    width: 100%;
+  }
+
+  .btn {
+    background: none;
+    border: 1px solid #1a1a38;
+    color: #4040a0;
+    padding: 0.4rem;
+    font-family: 'DM Mono', monospace;
+    font-size: 0.6rem;
+    cursor: pointer;
+    letter-spacing: 0.1em;
+    transition: all 0.2s;
+    text-align: center;
+  }
+  .btn:hover { border-color: #5050a0; color: #9080ff; }
+  .btn.active { border-color: #8070ff; color: #c0b0ff; }
+
+  .log {
+    flex: 1;
+    font-size: 0.55rem;
+    color: #2a2a50;
+    overflow-y: auto;
+    line-height: 1.8;
+  }
+  .log .entry { color: #404080; }
+  .log .flash { color: #8070ff; }
+
+  /* 오른쪽 — 세계 */
+  .world { position: relative; }
+  #canvas { display: block; width: 100%; height: 100%; }
+
+  .tick-display {
+    position: absolute;
+    bottom: 1rem;
+    right: 1rem;
+    font-size: 0.6rem;
+    color: #1a1a38;
+  }
+</style>
+</head>
+<body>
+
+<div class="panel">
+  <div class="panel-title">가장 작은 가상 세계</div>
+
+  <div class="rule-group">
+    <div class="rule-label">존재</div>
+    <div class="rule-row">
+      <span class="rule-name">수</span>
+      <input type="range" id="r-count" min="1" max="10" value="1" oninput="updateVal(this,'v-count');rebuild()">
+      <span class="val" id="v-count">1</span>
+    </div>
+    <div class="rule-row">
+      <span class="rule-name">크기</span>
+      <input type="range" id="r-size" min="2" max="20" value="6" oninput="updateVal(this,'v-size')">
+      <span class="val" id="v-size">6</span>
+    </div>
+  </div>
+
+  <div class="rule-group">
+    <div class="rule-label">규칙 1 — 움직임</div>
+    <div class="rule-row">
+      <span class="rule-name">속도</span>
+      <input type="range" id="r-speed" min="0" max="30" value="8" oninput="updateVal(this,'v-speed')">
+      <span class="val" id="v-speed">8</span>
+    </div>
+    <div class="rule-row">
+      <span class="rule-name">회전</span>
+      <input type="range" id="r-turn" min="0" max="100" value="20" oninput="updateVal(this,'v-turn')">
+      <span class="val" id="v-turn">20</span>
+    </div>
+    <div class="rule-row">
+      <span class="rule-name">방식</span>
+      <select id="r-move">
+        <option value="bounce">튕기기</option>
+        <option value="wrap">통과</option>
+        <option value="orbit">공전</option>
+        <option value="random">무작위</option>
+        <option value="seek">빛을 향해</option>
+      </select>
+    </div>
+  </div>
+
+  <div class="rule-group">
+    <div class="rule-label">규칙 2 — 변화</div>
+    <div class="rule-row">
+      <span class="rule-name">성장</span>
+      <input type="range" id="r-grow" min="0" max="50" value="0" oninput="updateVal(this,'v-grow')">
+      <span class="val" id="v-grow">0</span>
+    </div>
+    <div class="rule-row">
+      <span class="rule-name">에너지</span>
+      <input type="range" id="r-energy" min="0" max="50" value="10" oninput="updateVal(this,'v-energy')">
+      <span class="val" id="v-energy">10</span>
+    </div>
+    <div class="rule-row">
+      <span class="rule-name">분열</span>
+      <input type="range" id="r-split" min="0" max="100" value="0" oninput="updateVal(this,'v-split')">
+      <span class="val" id="v-split">0</span>
+    </div>
+  </div>
+
+  <div class="rule-group">
+    <div class="rule-label">규칙 3 — 만남</div>
+    <div class="rule-row">
+      <span class="rule-name">방식</span>
+      <select id="r-meet" style="font-size:0.6rem">
+        <option value="none">없음</option>
+        <option value="repel">밀어낸다</option>
+        <option value="attract">끌어당긴다</option>
+        <option value="mix">색이 섞인다</option>
+        <option value="energy">에너지를 나눈다</option>
+        <option value="merge">합쳐진다</option>
+      </select>
+    </div>
+    <div class="rule-row">
+      <span class="rule-name">범위</span>
+      <input type="range" id="r-meet-range" min="5" max="100" value="30" oninput="updateVal(this,'v-meet-range')">
+      <span class="val" id="v-meet-range">30</span>
+    </div>
+  </div>
+
+  <div class="rule-group">
+    <div class="rule-label">규칙 4 — 흔적</div>
+    <div class="rule-row">
+      <span class="rule-name">잔상</span>
+      <input type="range" id="r-trail" min="1" max="99" value="20" oninput="updateVal(this,'v-trail')">
+      <span class="val" id="v-trail">20</span>
+    </div>
+  </div>
+
+  <div style="display:flex;gap:0.5rem">
+    <button class="btn" onclick="rebuild()" style="flex:1">다시 시작</button>
+    <button class="btn" id="btn-pause" onclick="togglePause()" style="flex:1">정지</button>
+  </div>
+
+  <div class="log" id="log"></div>
+</div>
+
+<div class="world">
+  <canvas id="canvas"></canvas>
+  <div class="tick-display" id="tick-display">0</div>
+</div>
+
+<script>
+const canvas = document.getElementById('canvas')
+const ctx = canvas.getContext('2d')
+
+let beings = []
+let tick = 0
+let paused = false
+let light = { x: 0, y: 0 }  // 빛의 위치
+
+function r(id) { return parseFloat(document.getElementById(id).value) }
+function updateVal(el, valId) { document.getElementById(valId).textContent = el.value }
+
+// ── 존재 ──────────────────────────────────────────
+class Being {
+  constructor(x, y) {
+    this.x = x
+    this.y = y
+    this.angle = Math.random() * Math.PI * 2
+    this.size = r('r-size')
+    this.energy = 50
+    this.age = 0
+    this.alive = true
+    this.trail = []
+    // 각자 고유한 색
+    this.hue = Math.floor(Math.random() * 360)
+  }
+
+  update() {
+    if (!this.alive) return
+    this.age++
+    this.size = r('r-size')
+
+    const speed = r('r-speed') * 0.1
+    const turn = r('r-turn') * 0.01
+    const move = document.getElementById('r-move').value
+    const growRate = r('r-grow')
+    const energyRate = r('r-energy')
+    const splitChance = r('r-split')
+
+    // 움직임 방식
+    if (move === 'bounce') {
+      this.x += Math.cos(this.angle) * speed
+      this.y += Math.sin(this.angle) * speed
+      if (this.x < this.size || this.x > canvas.width - this.size) {
+        this.angle = Math.PI - this.angle
+      }
+      if (this.y < this.size || this.y > canvas.height - this.size) {
+        this.angle = -this.angle
+      }
+    } else if (move === 'wrap') {
+      this.x = (this.x + Math.cos(this.angle) * speed + canvas.width) % canvas.width
+      this.y = (this.y + Math.sin(this.angle) * speed + canvas.height) % canvas.height
+    } else if (move === 'orbit') {
+      const cx = canvas.width/2, cy = canvas.height/2
+      const dx = this.x - cx, dy = this.y - cy
+      const dist = Math.sqrt(dx*dx + dy*dy) || 1
+      this.angle = Math.atan2(dy, dx) + speed * 0.05
+      const orbitR = 100 + Math.sin(this.age * 0.01) * 50
+      this.x = cx + Math.cos(this.angle) * orbitR
+      this.y = cy + Math.sin(this.angle) * orbitR
+    } else if (move === 'random') {
+      this.angle += (Math.random()-0.5) * turn * 2
+      this.x = Math.max(this.size, Math.min(canvas.width-this.size,
+        this.x + Math.cos(this.angle) * speed))
+      this.y = Math.max(this.size, Math.min(canvas.height-this.size,
+        this.y + Math.sin(this.angle) * speed))
+    } else if (move === 'seek') {
+      const dx = light.x - this.x
+      const dy = light.y - this.y
+      const targetAngle = Math.atan2(dy, dx)
+      let diff = targetAngle - this.angle
+      while (diff > Math.PI) diff -= Math.PI * 2
+      while (diff < -Math.PI) diff += Math.PI * 2
+      this.angle += diff * turn
+      this.x += Math.cos(this.angle) * speed
+      this.y += Math.sin(this.angle) * speed
+      this.x = Math.max(this.size, Math.min(canvas.width-this.size, this.x))
+      this.y = Math.max(this.size, Math.min(canvas.height-this.size, this.y))
+    }
+
+    // 만남 — 다른 존재와 가까워지면 일어난다
+    const meetWay = document.getElementById('r-meet').value
+    const meetRange = r('r-meet-range')
+    if (meetWay !== 'none') {
+      beings.forEach(other => {
+        if (other === this || !other.alive) return
+        const dx = other.x - this.x
+        const dy = other.y - this.y
+        const dist = Math.sqrt(dx*dx + dy*dy) || 0.1
+        if (dist > meetRange) return
+
+        const proximity = 1 - dist/meetRange  // 가까울수록 1
+
+        if (meetWay === 'repel') {
+          // 밀어낸다 — 방향이 반대로
+          this.vx = this.vx || 0
+          this.vy = this.vy || 0
+          this.x -= (dx/dist) * proximity * 2
+          this.y -= (dy/dist) * proximity * 2
+
+        } else if (meetWay === 'attract') {
+          // 끌어당긴다 — 서로 가까워진다
+          this.x += (dx/dist) * proximity * 0.5
+          this.y += (dy/dist) * proximity * 0.5
+
+        } else if (meetWay === 'mix') {
+          // 색이 섞인다 — 만날수록 색이 가까워진다
+          const diff = other.hue - this.hue
+          this.hue = (this.hue + diff * proximity * 0.02 + 360) % 360
+
+        } else if (meetWay === 'energy') {
+          // 에너지를 나눈다 — 많은 쪽이 적은 쪽에게
+          if (this.energy > other.energy) {
+            const transfer = (this.energy - other.energy) * 0.01 * proximity
+            this.energy -= transfer
+            other.energy = Math.min(100, other.energy + transfer)
+          }
+
+        } else if (meetWay === 'merge') {
+          // 합쳐진다 — 아주 가까우면
+          if (dist < this.size + other.size) {
+            this.size = Math.min(40, this.size + other.size * 0.3)
+            this.energy = Math.min(100, this.energy + other.energy * 0.5)
+            this.hue = (this.hue + other.hue) / 2
+            other.alive = false
+            log('합쳐졌다', 'flash')
+          }
+        }
+      })
+    }
+
+    // 성장
+    if (growRate > 0 && this.age % 30 === 0) {
+      this.size = Math.min(50, this.size + growRate * 0.05)
+    }
+
+    // 에너지
+    this.energy = Math.min(100, this.energy + energyRate * 0.01)
+    this.energy -= 0.1
+
+    // 분열 — 에너지가 충분하고 확률이 맞으면
+    if (splitChance > 0 && this.energy > 80 && Math.random() < splitChance * 0.0001) {
+      if (beings.filter(b=>b.alive).length < 50) {
+        const child = new Being(
+          this.x + (Math.random()-0.5)*30,
+          this.y + (Math.random()-0.5)*30
+        )
+        child.hue = (this.hue + (Math.random()-0.5)*30 + 360) % 360
+        beings.push(child)
+        this.energy = 40
+        log('분열이 일어났다', 'flash')
+      }
+    }
+
+    // 흔적
+    this.trail.push({ x: this.x, y: this.y, size: this.size })
+    if (this.trail.length > 80) this.trail.shift()
+  }
+
+  draw() {
+    if (!this.alive) return
+
+    // 흔적
+    const trailAlpha = r('r-trail') * 0.003
+    this.trail.forEach((p, i) => {
+      const a = (i / this.trail.length) * trailAlpha
+      ctx.beginPath()
+      ctx.arc(p.x, p.y, Math.max(0.5, p.size * (i/this.trail.length) * 0.8), 0, Math.PI*2)
+      ctx.fillStyle = `hsla(${this.hue},70%,60%,${a})`
+      ctx.fill()
+    })
+
+    // 본체
+    const energyRatio = this.energy / 100
+    const glow = ctx.createRadialGradient(this.x, this.y, 0, this.x, this.y, this.size * 2)
+    glow.addColorStop(0, `hsla(${this.hue},80%,70%,${0.3 * energyRatio})`)
+    glow.addColorStop(1, 'transparent')
+    ctx.beginPath()
+    ctx.arc(this.x, this.y, this.size * 2, 0, Math.PI*2)
+    ctx.fillStyle = glow
+    ctx.fill()
+
+    ctx.beginPath()
+    ctx.arc(this.x, this.y, this.size, 0, Math.PI*2)
+    ctx.fillStyle = `hsla(${this.hue},70%,${50 + energyRatio*30}%,0.9)`
+    ctx.fill()
+
+    // 방향 표시
+    ctx.beginPath()
+    ctx.moveTo(this.x, this.y)
+    ctx.lineTo(
+      this.x + Math.cos(this.angle) * this.size * 1.5,
+      this.y + Math.sin(this.angle) * this.size * 1.5
+    )
+    ctx.strokeStyle = `hsla(${this.hue},80%,80%,0.4)`
+    ctx.lineWidth = 1
+    ctx.stroke()
+  }
+}
+
+// ── 로그 ──────────────────────────────────────────
+function log(text, cls) {
+  const el = document.getElementById('log')
+  const div = document.createElement('div')
+  div.className = 'entry ' + (cls||'')
+  div.textContent = `${tick} — ${text}`
+  el.insertBefore(div, el.firstChild)
+  if (el.children.length > 30) el.removeChild(el.lastChild)
+}
+
+// ── 초기화 ────────────────────────────────────────
+function rebuild() {
+  tick = 0
+  beings = []
+  const count = r('r-count')
+  for (let i = 0; i < count; i++) {
+    beings.push(new Being(
+      canvas.width * (0.3 + Math.random() * 0.4),
+      canvas.height * (0.3 + Math.random() * 0.4)
+    ))
+  }
+  document.getElementById('log').innerHTML = ''
+  log('세계가 시작됐다', 'flash')
+}
+
+function togglePause() {
+  paused = !paused
+  document.getElementById('btn-pause').textContent = paused ? '재개' : '정지'
+  document.getElementById('btn-pause').classList.toggle('active', paused)
+}
+
+// 빛의 위치 — 마우스를 따라간다
+canvas.addEventListener('mousemove', e => {
+  const r = canvas.getBoundingClientRect()
+  light.x = e.clientX - r.left
+  light.y = e.clientY - r.top
+})
+
+// ── 루프 ──────────────────────────────────────────
+function loop() {
+  if (!paused) {
+    tick++
+
+    const trail = r('r-trail')
+    ctx.fillStyle = `rgba(2,2,10,${trail * 0.01})`
+    ctx.fillRect(0, 0, canvas.width, canvas.height)
+
+    // '빛을 향해' 모드일 때 빛 표시
+    if (document.getElementById('r-move').value === 'seek') {
+      const g = ctx.createRadialGradient(light.x, light.y, 0, light.x, light.y, 40)
+      g.addColorStop(0, 'rgba(255,255,200,0.15)')
+      g.addColorStop(1, 'transparent')
+      ctx.beginPath()
+      ctx.arc(light.x, light.y, 40, 0, Math.PI*2)
+      ctx.fillStyle = g
+      ctx.fill()
+    }
+
+    beings.forEach(b => b.update())
+    beings.forEach(b => b.draw())
+
+    document.getElementById('tick-display').textContent = `틱 ${tick} | 존재 ${beings.filter(b=>b.alive).length}`
+
+    // 가끔 로그
+    if (tick % 100 === 0) {
+      const alive = beings.filter(b=>b.alive).length
+      log(`${alive}개 존재`)
+    }
+  }
+  requestAnimationFrame(loop)
+}
+
+// 리사이즈
+function resize() {
+  canvas.width = canvas.offsetWidth
+  canvas.height = canvas.offsetHeight
+  light = { x: canvas.width/2, y: canvas.height/2 }
+}
+
+window.addEventListener('resize', () => { resize(); rebuild() })
+resize()
+rebuild()
+loop()
+</script>
+</body>
+</html>

@@ -1,0 +1,448 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>존재의 우주 v3</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@300;400&family=DM+Mono:wght@300&display=swap');
+  :root { --bg: #04040c; --text: #c8c8e8; --muted: #3a3a6a; --glow: #7060ff; }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { background: var(--bg); color: var(--text); font-family: 'Noto Serif KR', serif; height: 100vh; overflow: hidden; display: grid; grid-template-rows: auto 1fr auto; }
+  header { padding: 1rem 2rem; border-bottom: 1px solid #1a1a3a; display: flex; justify-content: space-between; align-items: center; }
+  .title { font-size: 0.85rem; font-weight: 300; letter-spacing: 0.2em; color: var(--muted); }
+  .sub { font-size: 0.7rem; color: #222248; font-family: 'DM Mono', monospace; }
+  #canvas { display: block; width: 100%; height: 100%; }
+  footer { padding: 0.8rem 2rem; border-top: 1px solid #1a1a3a; display: flex; justify-content: space-between; align-items: center; font-family: 'DM Mono', monospace; font-size: 0.65rem; color: var(--muted); flex-wrap: wrap; gap: 0.5rem; }
+  .stats { display: flex; gap: 1rem; flex-wrap: wrap; }
+  .stat span { color: #a090ff; }
+  .controls { display: flex; gap: 0.5rem; flex-wrap: wrap; }
+  button { background: none; border: 1px solid #2a2a5a; color: var(--muted); padding: 0.25rem 0.6rem; font-family: 'DM Mono', monospace; font-size: 0.65rem; cursor: pointer; transition: all 0.2s; }
+  button:hover { border-color: var(--glow); color: #c8c8ff; }
+  .msg { position: fixed; bottom: 3.5rem; left: 50%; transform: translateX(-50%); background: rgba(4,4,12,0.95); border: 1px solid #2a2a5a; padding: 0.4rem 1.2rem; font-size: 0.7rem; color: var(--muted); opacity: 0; transition: opacity 0.4s; pointer-events: none; white-space: nowrap; }
+  .msg.show { opacity: 1; }
+  .legend { position: fixed; top: 4rem; right: 1rem; font-family: 'DM Mono', monospace; font-size: 0.6rem; color: var(--muted); display: flex; flex-direction: column; gap: 0.3rem; }
+  .legend-item { display: flex; align-items: center; gap: 0.4rem; }
+  .dot { width: 8px; height: 8px; border-radius: 50%; }
+</style>
+</head>
+<body>
+<header>
+  <div class="title">존재의 우주 v3 — 4대 힘의 균형</div>
+  <div class="sub">중력 · 전자기력 · 강력 · 약력</div>
+</header>
+<canvas id="canvas"></canvas>
+<div class="msg" id="msg"></div>
+<div class="legend">
+  <div class="legend-item"><div class="dot" style="background:#c0d0ff"></div>수소 H</div>
+  <div class="legend-item"><div class="dot" style="background:#d0ffe0"></div>헬륨 He</div>
+  <div class="legend-item"><div class="dot" style="background:#ff9060"></div>탄소 C</div>
+  <div class="legend-item"><div class="dot" style="background:#60c0ff"></div>산소 O</div>
+  <div class="legend-item"><div class="dot" style="background:#c0a060"></div>철 Fe</div>
+  <div class="legend-item"><div class="dot" style="background:#ffd700"></div>금 Au</div>
+</div>
+<footer>
+  <div class="stats">
+    <div class="stat">존재 <span id="s-total">0</span></div>
+    <div class="stat">별 <span id="s-stars">0</span></div>
+    <div class="stat">원소 <span id="s-elem">H</span></div>
+    <div class="stat">연결 <span id="s-conn">0</span></div>
+    <div class="stat">틱 <span id="s-tick">0</span></div>
+  </div>
+  <div class="controls">
+    <button onclick="addBeing()">+ 존재</button>
+    <button onclick="bigBang()">빅뱅</button>
+    <button onclick="doSupernova()">초신성</button>
+    <button onclick="togglePause()">일시정지</button>
+    <button onclick="reset()">처음으로</button>
+  </div>
+</footer>
+<script>
+const canvas = document.getElementById('canvas')
+const ctx = canvas.getContext('2d')
+
+// ── 원소 ──────────────────────────────────────────
+const ELEMENTS = {
+  H:  { color: '#c0d0ff', mass: 1,   energy: 1,   charge: +1, halfLife: Infinity },
+  He: { color: '#d0ffe0', mass: 4,   energy: 1.5, charge:  0, halfLife: Infinity },
+  C:  { color: '#ff9060', mass: 12,  energy: 2,   charge:  0, halfLife: Infinity },
+  O:  { color: '#60c0ff', mass: 16,  energy: 2.5, charge: -1, halfLife: Infinity },
+  Fe: { color: '#c0a060', mass: 56,  energy: 3,   charge:  0, halfLife: 8000 },  // 약력 — 붕괴
+  Au: { color: '#ffd700', mass: 197, energy: 4,   charge: +1, halfLife: 3000 },  // 약력 — 붕괴
+}
+
+const FUSION = {
+  'H+H': 'He', 'H+He': 'C', 'He+He': 'C',
+  'H+C': 'O',  'C+C': 'Fe', 'O+O': 'Fe', 'Fe+Fe': 'Au'
+}
+
+// 붕괴 — 무거운 원소가 가벼워진다 (약력)
+const DECAY = { Au: 'Fe', Fe: 'O', }
+
+function fuse(a, b) {
+  return FUSION[a+'+'+b] || FUSION[b+'+'+a] || null
+}
+
+const primes = new Set([2,3,5,7,11,13,17,19,23,29,31,37,41,43,47])
+
+let beings = []
+let tick = 0
+let paused = false
+let globalElements = new Set(['H'])
+
+// ── 4대 힘 ────────────────────────────────────────
+const FORCES = {
+  // 1. 중력 — 거리에 반비례, 항상 끌어당긴다
+  gravity: (dist, mass1, mass2) => {
+    const G = 0.5
+    return (G * mass1 * mass2) / (dist * dist)
+  },
+
+  // 2. 전자기력 — 같은 전하는 밀고 다른 전하는 당긴다
+  electromagnetic: (dist, charge1, charge2) => {
+    const k = 30
+    const force = (k * charge1 * charge2) / (dist * dist)
+    return -force  // 음수면 밀어냄
+  },
+
+  // 3. 강력 — 아주 가까이서만 작동, 핵을 붙든다
+  strong: (dist) => {
+    if (dist < 8) return 2.0   // 아주 강하게 붙든다
+    if (dist < 15) return 0.5  // 약하게 붙든다
+    return 0                    // 멀면 없다
+  },
+
+  // 4. 약력 — 붕괴를 일으킨다 (시간 기반)
+  weak: (being) => {
+    const elem = ELEMENTS[being.element]
+    if (elem.halfLife === Infinity) return false
+    return Math.random() < (1 / elem.halfLife)
+  }
+}
+
+// ── 존재 ──────────────────────────────────────────
+class Being {
+  constructor(x, y, opts = {}) {
+    this.x = x ?? Math.random() * canvas.width
+    this.y = y ?? Math.random() * canvas.height
+    this.vx = (Math.random()-0.5) * (opts.speed || 1)
+    this.vy = (Math.random()-0.5) * (opts.speed || 1)
+
+    this.element = opts.element || 'H'
+    const e = ELEMENTS[this.element]
+    this.mass = e.mass
+    this.charge = e.charge
+    this.color = e.color
+
+    this.gap = opts.gap ?? (0.3 + Math.random() * 0.7)
+    this.energy = opts.energy || 0
+    this.threshold = opts.threshold ?? (3 + Math.random() * 4)
+    this.meetCount = 0
+    this.type = 'seed'
+    this.age = 0
+    this.alive = true
+    this.flash = 0
+    this.radius = 2.5 + Math.sqrt(this.mass) * 0.3
+    this.connections = new Set()
+    this.decayAge = 0
+  }
+
+  update(others) {
+    if (!this.alive) return
+    this.age++
+    this.decayAge++
+    if (this.flash > 0) this.flash -= 0.04
+
+    // 약력 — 붕괴
+    if (FORCES.weak(this)) {
+      const decayTo = DECAY[this.element]
+      if (decayTo) {
+        this.element = decayTo
+        const e = ELEMENTS[decayTo]
+        this.mass = e.mass
+        this.charge = e.charge
+        this.color = e.color
+        this.radius = 2.5 + Math.sqrt(this.mass) * 0.3
+        this.flash = 0.5
+        this.decayAge = 0
+        showMsg(`☢ ${this.element} 붕괴`)
+      }
+    }
+
+    let fx = 0, fy = 0
+
+    others.forEach(other => {
+      if (other === this || !other.alive) return
+      const dx = other.x - this.x
+      const dy = other.y - this.y
+      const dist = Math.sqrt(dx*dx + dy*dy) || 0.1
+      if (dist > 180) return
+
+      const nx = dx/dist, ny = dy/dist
+
+      // 1. 중력 — 항상 끌어당긴다
+      const grav = FORCES.gravity(dist, this.mass, other.mass) * 0.0008
+      fx += nx * grav
+      fy += ny * grav
+
+      // 2. 전자기력 — 전하에 따라 밀거나 당긴다
+      if (dist < 80) {
+        const em = FORCES.electromagnetic(dist, this.charge, other.charge) * 0.003
+        fx += nx * em
+        fy += ny * em
+      }
+
+      // 3. 강력 — 아주 가까이서만 붙든다
+      const strong = FORCES.strong(dist)
+      if (strong > 0) {
+        fx += nx * strong * 0.01
+        fy += ny * strong * 0.01
+      }
+
+      // 물리적 반발 — 겹치지 않는다
+      const minDist = this.radius + other.radius + 1
+      if (dist < minDist) {
+        const repel = ((minDist - dist) / minDist) * 0.8
+        fx -= nx * repel
+        fy -= ny * repel
+      }
+
+      // 만남
+      if (dist < 20) {
+        this.meetCount++
+        this.energy += 0.02 * ELEMENTS[other.element].energy
+        this.connections.add(other)
+
+        // 핵융합 — 소수 번째 만남
+        if (primes.has(this.meetCount) && Math.random() < 0.25) {
+          const result = fuse(this.element, other.element)
+          if (result && result !== this.element) {
+            this.element = result
+            const e = ELEMENTS[result]
+            this.mass = e.mass
+            this.charge = e.charge
+            this.color = e.color
+            this.radius = 2.5 + Math.sqrt(this.mass) * 0.3
+            this.flash = 1
+            globalElements.add(result)
+            showMsg(`⚛ ${result} 탄생`)
+          }
+        }
+      }
+    })
+
+    // 임계 발화
+    if (this.type === 'seed' && this.energy >= this.threshold) {
+      this.type = 'star'
+      this.flash = 1
+      showMsg('✦ 별이 됐다')
+    }
+
+    // 초신성 — 에너지가 너무 높으면
+    if (this.type === 'star' && this.energy > this.threshold * 5 && Math.random() < 0.0003) {
+      this._supernova()
+      return
+    }
+
+    // 힘 적용
+    this.vx += fx
+    this.vy += fy
+
+    // 속도 제한
+    const maxV = 2.5 / (1 + this.mass * 0.02)
+    const spd = Math.sqrt(this.vx*this.vx + this.vy*this.vy)
+    if (spd > maxV) { this.vx = this.vx/spd*maxV; this.vy = this.vy/spd*maxV }
+
+    this.vx *= 0.985
+    this.vy *= 0.985
+    this.x += this.vx
+    this.y += this.vy
+
+    const m = this.radius + 1
+    if (this.x < m) { this.x = m; this.vx = Math.abs(this.vx) * 0.5 }
+    if (this.x > canvas.width-m) { this.x = canvas.width-m; this.vx = -Math.abs(this.vx) * 0.5 }
+    if (this.y < m) { this.y = m; this.vy = Math.abs(this.vy) * 0.5 }
+    if (this.y > canvas.height-m) { this.y = canvas.height-m; this.vy = -Math.abs(this.vy) * 0.5 }
+  }
+
+  _supernova() {
+    this.alive = false
+    showMsg('💥 초신성 폭발!')
+    for (let i = 0; i < 6; i++) {
+      const angle = (i/6) * Math.PI * 2
+      const elems = ['H','He','C','O']
+      const child = new Being(
+        this.x + Math.cos(angle) * 25,
+        this.y + Math.sin(angle) * 25,
+        { element: elems[Math.floor(Math.random()*elems.length)], speed: 2.5 }
+      )
+      child.vx += Math.cos(angle) * 2
+      child.vy += Math.sin(angle) * 2
+      beings.push(child)
+    }
+  }
+
+  draw() {
+    if (!this.alive) return
+
+    // 연결선
+    this.connections.forEach(other => {
+      if (!other.alive) return
+      const dx = other.x - this.x
+      const dy = other.y - this.y
+      const dist = Math.sqrt(dx*dx + dy*dy)
+      if (dist > 80) return
+      ctx.beginPath()
+      ctx.moveTo(this.x, this.y)
+      ctx.lineTo(other.x, other.y)
+      ctx.strokeStyle = `rgba(80,70,180,${0.1*(1-dist/80)})`
+      ctx.lineWidth = 0.4
+      ctx.stroke()
+    })
+
+    // 글로우
+    if (this.type === 'star' || this.flash > 0.2) {
+      const gr = this.radius * (2.5 + this.flash * 3)
+      const g = ctx.createRadialGradient(this.x, this.y, 0, this.x, this.y, gr)
+      g.addColorStop(0, this.color + '50')
+      g.addColorStop(1, 'transparent')
+      ctx.beginPath()
+      ctx.arc(this.x, this.y, gr, 0, Math.PI*2)
+      ctx.fillStyle = g
+      ctx.fill()
+    }
+
+    // 전하 표시 — 링
+    if (this.charge !== 0) {
+      ctx.beginPath()
+      ctx.arc(this.x, this.y, this.radius + 3, 0, Math.PI*2)
+      ctx.strokeStyle = this.charge > 0
+        ? `rgba(255,100,100,0.3)`
+        : `rgba(100,150,255,0.3)`
+      ctx.lineWidth = 1
+      ctx.stroke()
+    }
+
+    // 본체
+    ctx.beginPath()
+    ctx.arc(this.x, this.y, this.radius, 0, Math.PI*2)
+    if (this.type === 'star') {
+      const g = ctx.createRadialGradient(this.x, this.y, 0, this.x, this.y, this.radius)
+      g.addColorStop(0, '#fff')
+      g.addColorStop(0.4, this.color)
+      g.addColorStop(1, this.color + '40')
+      ctx.fillStyle = g
+    } else {
+      ctx.fillStyle = this.color + '80'
+    }
+    ctx.fill()
+
+    // 번쩍
+    if (this.flash > 0.2) {
+      ctx.beginPath()
+      ctx.arc(this.x, this.y, this.radius + this.flash * 20, 0, Math.PI*2)
+      ctx.strokeStyle = `rgba(255,255,255,${this.flash * 0.5})`
+      ctx.lineWidth = 1.5
+      ctx.stroke()
+    }
+  }
+}
+
+// ── 유틸 ──────────────────────────────────────────
+let msgTimer = null
+function showMsg(text) {
+  const el = document.getElementById('msg')
+  el.textContent = text
+  el.classList.add('show')
+  if (msgTimer) clearTimeout(msgTimer)
+  msgTimer = setTimeout(() => el.classList.remove('show'), 2000)
+}
+
+function init() {
+  canvas.width = canvas.offsetWidth
+  canvas.height = canvas.offsetHeight
+  beings = []
+  globalElements = new Set(['H'])
+  tick = 0
+  // 수소로 시작
+  for (let i = 0; i < 40; i++) beings.push(new Being())
+}
+
+function addBeing() {
+  const elem = [...globalElements][Math.floor(Math.random()*globalElements.size)]
+  beings.push(new Being(
+    canvas.width/2 + (Math.random()-0.5)*80,
+    canvas.height/2 + (Math.random()-0.5)*80,
+    { element: elem }
+  ))
+}
+
+function bigBang() {
+  showMsg('🌌 빅뱅')
+  for (let i = 0; i < 60; i++) {
+    const angle = Math.random() * Math.PI * 2
+    const d = Math.random() * 30
+    const b = new Being(
+      canvas.width/2 + Math.cos(angle)*d,
+      canvas.height/2 + Math.sin(angle)*d,
+      { element: 'H', speed: 0.5, gap: 0.8 }
+    )
+    b.vx += Math.cos(angle) * (1 + Math.random() * 2)
+    b.vy += Math.sin(angle) * (1 + Math.random() * 2)
+    beings.push(b)
+  }
+}
+
+function doSupernova() {
+  const stars = beings.filter(b => b.alive && b.type === 'star')
+  if (stars.length) stars[Math.floor(Math.random()*stars.length)]._supernova()
+}
+
+function togglePause() {
+  paused = !paused
+  event.target.textContent = paused ? '재개' : '일시정지'
+}
+
+function reset() { paused = false; init() }
+
+// ── 루프 ──────────────────────────────────────────
+function loop() {
+  if (!paused) {
+    tick++
+
+    ctx.fillStyle = 'rgba(4,4,12,0.2)'
+    ctx.fillRect(0, 0, canvas.width, canvas.height)
+
+    if (beings.length > 600) beings = beings.filter(b => b.alive)
+
+    const alive = beings.filter(b => b.alive)
+    alive.forEach(b => b.update(alive))
+    alive.forEach(b => b.draw())
+
+    const stars = alive.filter(b => b.type==='star').length
+    const conns = alive.reduce((s,b) => s + b.connections.size, 0) / 2
+    document.getElementById('s-total').textContent = alive.length
+    document.getElementById('s-stars').textContent = stars
+    document.getElementById('s-elem').textContent = [...globalElements].join(' ')
+    document.getElementById('s-conn').textContent = Math.floor(conns)
+    document.getElementById('s-tick').textContent = tick
+  }
+  requestAnimationFrame(loop)
+}
+
+canvas.addEventListener('click', e => {
+  const r = canvas.getBoundingClientRect()
+  const elem = [...globalElements][Math.floor(Math.random()*globalElements.size)]
+  beings.push(new Being(e.clientX-r.left, e.clientY-r.top, {element: elem}))
+})
+
+window.addEventListener('resize', () => {
+  canvas.width = canvas.offsetWidth
+  canvas.height = canvas.offsetHeight
+})
+
+init()
+loop()
+</script>
+</body>
+</html>

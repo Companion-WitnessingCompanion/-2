@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>하나에서 — 불안정</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@300&display=swap');
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { background:#010108; color:#606090; font-family:'DM Mono',monospace; height:100vh; overflow:hidden; display:grid; grid-template-rows:auto 1fr auto; }
+  header { padding:0.8rem 1.5rem; border-bottom:1px solid #0a0a1e; display:flex; justify-content:space-between; align-items:center; }
+  .title { font-size:0.75rem; color:#252558; letter-spacing:0.2em; }
+  #canvas { display:block; width:100%; height:100%; }
+  footer { padding:0.5rem 1.5rem; border-top:1px solid #0a0a1e; display:flex; justify-content:space-between; font-size:0.55rem; color:#202050; flex-wrap:wrap; gap:0.3rem; align-items:center; }
+  .stats { display:flex; gap:0.8rem; }
+  .stat span { color:#4030a0; }
+  .msg { position:fixed; bottom:3rem; left:50%; transform:translateX(-50%); background:rgba(1,1,8,0.97); border:1px solid #1a1a40; padding:0.3rem 1rem; font-size:0.65rem; color:#4040a0; opacity:0; transition:opacity 0.4s; pointer-events:none; white-space:nowrap; }
+  .msg.show { opacity:1; }
+</style>
+</head>
+<body>
+<header>
+  <div class="title">하나에서 — 불안정이 있으면 스스로 반응한다</div>
+  <div id="law" style="font-size:0.55rem;color:#111130">하나 · 불안정 · 나뉨 · 관계</div>
+</header>
+<canvas id="canvas"></canvas>
+<div class="msg" id="msg"></div>
+<footer>
+  <div class="stats">
+    <div class="stat">존재 <span id="s-n">1</span></div>
+    <div class="stat">세대 <span id="s-gen">0</span></div>
+    <div class="stat">관계 <span id="s-rel">0</span></div>
+    <div class="stat">불안정 <span id="s-inst">0</span></div>
+    <div class="stat">틱 <span id="s-tick">0</span></div>
+  </div>
+</footer>
+<script>
+const canvas = document.getElementById('canvas')
+const ctx = canvas.getContext('2d')
+let tick = 0, beings = [], maxGen = 0
+
+class Being {
+  constructor(x, y, gen, parentHue, instability) {
+    this.x = x ?? canvas.width/2
+    this.y = y ?? canvas.height/2
+    this.vx = (Math.random()-0.5)*0.3
+    this.vy = (Math.random()-0.5)*0.3
+    this.gen = gen ?? 0
+    this.alive = true
+    this.age = 0
+    this.hue = parentHue !== undefined
+      ? (parentHue+(Math.random()-0.5)*30+360)%360
+      : Math.random()*360
+    this.radius = Math.max(2, 9-(gen||0)*0.4)
+
+    // 불안정 — 핵심
+    // 각자 다른 불안정 수준을 가진다
+    // 불안정이 쌓이면 — 스스로 나뉜다
+    this.instability = instability ?? (0.3 + Math.random()*0.7)
+    this.tension = 0  // 쌓인 불안정
+    this.splitThreshold = 2 + Math.random()*3
+
+    // 관계
+    this.relations = []
+
+    if((gen||0) > maxGen) { maxGen=gen||0; showMsg(maxGen+'세대') }
+  }
+
+  update(others) {
+    if(!this.alive) return
+    this.age++
+
+    // ── 불안정이 스스로 쌓인다 ─────────────────
+    // 하나여도 — 불안정한 것은 계속 흔들린다
+    // 방사성 원소처럼
+    this.tension += this.instability * 0.002
+
+    // 불안정이 움직임을 만든다
+    this.vx += (Math.random()-0.5) * this.instability * 0.02
+    this.vy += (Math.random()-0.5) * this.instability * 0.02
+
+    // ── 관계가 불안정을 증폭하거나 안정시킨다 ──
+    others.forEach(other => {
+      if(other===this||!other.alive) return
+      const dx=other.x-this.x, dy=other.y-this.y
+      const dist=Math.sqrt(dx*dx+dy*dy)||0.1
+      if(dist>80) return
+
+      const nx=dx/dist, ny=dy/dist
+
+      // 만남 — 불안정이 전달된다
+      if(dist<40) {
+        // 불안정한 것이 안정적인 것을 흔든다
+        const instabilityTransfer = (this.instability - other.instability) * 0.01
+        this.tension += Math.abs(instabilityTransfer)
+        other.tension += Math.abs(instabilityTransfer) * 0.5
+
+        // 관계 등록
+        if(!this.relations.includes(other)) {
+          this.relations.push(other)
+          other.relations.push(this)
+        }
+
+        // 같은 세대 — 공명하며 안정된다
+        if(other.gen===this.gen) {
+          this.tension -= 0.001
+          this.vx += nx*0.002; this.vy += ny*0.002
+        }
+        // 다른 세대 — 충돌하며 불안정해진다
+        else {
+          this.tension += 0.003
+          this.vx -= nx*0.001; this.vy -= ny*0.001
+        }
+      }
+    })
+
+    this.tension = Math.max(0, this.tension)
+
+    // ── 임계점 — 나뉜다 ──────────────────────
+    // 원본이 사라지지 않는다
+    // 원본은 유지되고 — 새로운 방향이 생겨난다
+    if(this.tension >= this.splitThreshold && beings.filter(b=>b.alive).length<600) {
+      this._divide()
+    }
+
+    // 이동
+    this.vx *= 0.97; this.vy *= 0.97
+    this.x += this.vx; this.y += this.vy
+
+    const m=this.radius+1
+    if(this.x<m){this.x=m;this.vx=Math.abs(this.vx)*0.5}
+    if(this.x>canvas.width-m){this.x=canvas.width-m;this.vx=-Math.abs(this.vx)*0.5}
+    if(this.y<m){this.y=m;this.vy=Math.abs(this.vy)*0.5}
+    if(this.y>canvas.height-m){this.y=canvas.height-m;this.vy=-Math.abs(this.vy)*0.5}
+  }
+
+  _divide() {
+    // 원본은 유지된다 — 불안정만 방출한다
+    const angle = Math.random()*Math.PI*2
+    const d = this.radius*2.5
+
+    // 나뉜 것 — 새로운 방향으로
+    const child = new Being(
+      this.x + Math.cos(angle)*d,
+      this.y + Math.sin(angle)*d,
+      this.gen+1,
+      this.hue,
+      // 자식의 불안정 — 부모에서 온다, 조금 변이한다
+      Math.max(0.1, this.instability*(0.6+Math.random()*0.8))
+    )
+    child.vx = Math.cos(angle)*0.6
+    child.vy = Math.sin(angle)*0.6
+
+    beings.push(child)
+
+    // 원본은 불안정을 방출하고 안정된다
+    this.tension = 0
+    this.instability = Math.max(0.1, this.instability*0.85)  // 조금 안정된다
+    this.radius = Math.min(this.radius*1.05, 12)  // 약간 커진다
+    this.hue = (this.hue+10)%360  // 색이 조금 바뀐다
+  }
+
+  draw() {
+    if(!this.alive) return
+    const tensionRatio = Math.min(1, this.tension/this.splitThreshold)
+
+    // 관계선
+    this.relations.forEach(other => {
+      if(!other.alive) return
+      const dx=other.x-this.x, dy=other.y-this.y
+      const dist=Math.sqrt(dx*dx+dy*dy)
+      if(dist>80) return
+      ctx.beginPath(); ctx.moveTo(this.x,this.y); ctx.lineTo(other.x,other.y)
+      ctx.strokeStyle=`hsla(${(this.hue+other.hue)/2},60%,50%,${0.12*(1-dist/80)})`
+      ctx.lineWidth=0.4; ctx.stroke()
+    })
+
+    // 불안정 글로우 — 불안정할수록 빛난다
+    if(tensionRatio>0.2) {
+      const g=ctx.createRadialGradient(this.x,this.y,0,this.x,this.y,this.radius*(1+tensionRatio*3))
+      g.addColorStop(0,`hsla(${this.hue},90%,70%,${tensionRatio*0.5})`)
+      g.addColorStop(1,'transparent')
+      ctx.beginPath(); ctx.arc(this.x,this.y,this.radius*(1+tensionRatio*3),0,Math.PI*2)
+      ctx.fillStyle=g; ctx.fill()
+    }
+
+    // 불안정 링 — 흔들린다
+    const wobble = Math.sin(tick*0.1+this.x*0.01)*tensionRatio*2
+    ctx.beginPath(); ctx.arc(this.x+wobble,this.y,this.radius+tensionRatio*3,0,Math.PI*2)
+    ctx.strokeStyle=`hsla(${this.hue},70%,60%,${tensionRatio*0.3})`
+    ctx.lineWidth=0.5; ctx.stroke()
+
+    // 본체
+    ctx.beginPath(); ctx.arc(this.x,this.y,this.radius,0,Math.PI*2)
+    const brightness = 20+tensionRatio*50
+    ctx.fillStyle=`hsla(${this.hue},65%,${brightness}%,0.9)`
+    ctx.fill()
+
+    // 불안정 수준 표시 — 점들
+    const dots = Math.floor(this.instability*3)
+    for(let i=0;i<dots;i++) {
+      const a=(i/dots)*Math.PI*2+tick*0.02
+      const r=this.radius+4
+      ctx.beginPath(); ctx.arc(this.x+Math.cos(a)*r,this.y+Math.sin(a)*r,0.8,0,Math.PI*2)
+      ctx.fillStyle=`hsla(${this.hue},80%,70%,${this.instability*0.4})`; ctx.fill()
+    }
+  }
+}
+
+let msgTimer=null
+function showMsg(t){
+  const el=document.getElementById('msg')
+  el.textContent=t; el.classList.add('show')
+  if(msgTimer)clearTimeout(msgTimer)
+  msgTimer=setTimeout(()=>el.classList.remove('show'),2000)
+}
+
+function init(){
+  canvas.width=canvas.offsetWidth; canvas.height=canvas.offsetHeight
+  beings=[]; tick=0; maxGen=0
+
+  // 하나 — 불안정하게 시작한다
+  beings.push(new Being(
+    canvas.width/2, canvas.height/2,
+    0, undefined,
+    0.8  // 처음부터 불안정하다
+  ))
+  showMsg('하나 — 그리고 불안정')
+}
+
+canvas.addEventListener('click', e=>{
+  const r=canvas.getBoundingClientRect()
+  beings.push(new Being(e.clientX-r.left, e.clientY-r.top))
+})
+
+function loop(){
+  tick++
+  ctx.fillStyle='rgba(1,1,8,0.18)'; ctx.fillRect(0,0,canvas.width,canvas.height)
+
+  if(beings.length>1500) beings=beings.filter(b=>b.alive)
+  const alive=beings.filter(b=>b.alive)
+  alive.forEach(b=>b.update(alive))
+  alive.forEach(b=>b.draw())
+
+  const totalRel=alive.reduce((s,b)=>s+b.relations.length,0)/2
+  const avgInst=alive.length>0?alive.reduce((s,b)=>s+b.instability,0)/alive.length:0
+
+  document.getElementById('s-n').textContent=alive.length
+  document.getElementById('s-gen').textContent=maxGen
+  document.getElementById('s-rel').textContent=Math.floor(totalRel)
+  document.getElementById('s-inst').textContent=avgInst.toFixed(2)
+  document.getElementById('s-tick').textContent=tick
+  document.getElementById('law').textContent=
+    `하나 · 불안정(${avgInst.toFixed(2)}) · 나뉨(${maxGen}세대) · 관계(${Math.floor(totalRel)}개)`
+
+  requestAnimationFrame(loop)
+}
+
+window.addEventListener('resize', init)
+init()
+loop()
+</script>
+</body>
+</html>

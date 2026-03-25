@@ -1,0 +1,533 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>존재의 우주 v2</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@300;400&family=DM+Mono:wght@300&display=swap');
+
+  :root {
+    --bg: #04040c;
+    --text: #c8c8e8;
+    --muted: #3a3a6a;
+    --glow: #7060ff;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Noto Serif KR', serif;
+    height: 100vh;
+    overflow: hidden;
+    display: grid;
+    grid-template-rows: auto 1fr auto;
+  }
+
+  header {
+    padding: 1rem 2rem;
+    border-bottom: 1px solid #1a1a3a;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    z-index: 10;
+  }
+
+  .title { font-size: 0.85rem; font-weight: 300; letter-spacing: 0.2em; color: var(--muted); }
+  .subtitle { font-size: 0.7rem; color: #222248; font-family: 'DM Mono', monospace; }
+
+  #canvas { display: block; width: 100%; height: 100%; }
+
+  footer {
+    padding: 0.8rem 2rem;
+    border-top: 1px solid #1a1a3a;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-family: 'DM Mono', monospace;
+    font-size: 0.65rem;
+    color: var(--muted);
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    z-index: 10;
+  }
+
+  .stats { display: flex; gap: 1.2rem; flex-wrap: wrap; }
+  .stat span { color: #a090ff; }
+
+  .controls { display: flex; gap: 0.5rem; flex-wrap: wrap; }
+
+  button {
+    background: none;
+    border: 1px solid #2a2a5a;
+    color: var(--muted);
+    padding: 0.25rem 0.6rem;
+    font-family: 'DM Mono', monospace;
+    font-size: 0.65rem;
+    cursor: pointer;
+    letter-spacing: 0.05em;
+    transition: all 0.2s;
+  }
+
+  button:hover { border-color: var(--glow); color: #c8c8ff; }
+
+  .msg {
+    position: fixed;
+    bottom: 3.5rem;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(4,4,12,0.95);
+    border: 1px solid #2a2a5a;
+    padding: 0.4rem 1.2rem;
+    font-size: 0.7rem;
+    color: var(--muted);
+    opacity: 0;
+    transition: opacity 0.4s;
+    pointer-events: none;
+    white-space: nowrap;
+  }
+  .msg.show { opacity: 1; }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="title">존재의 우주 v2 — 복잡해지는 것이 창발이다</div>
+  <div class="subtitle">항해 일지 10 | 2026.03.25</div>
+</header>
+
+<canvas id="canvas"></canvas>
+<div class="msg" id="msg"></div>
+
+<footer>
+  <div class="stats">
+    <div class="stat">존재 <span id="s-total">0</span></div>
+    <div class="stat">별 <span id="s-stars">0</span></div>
+    <div class="stat">블랙홀 <span id="s-bh">0</span></div>
+    <div class="stat">연결 <span id="s-conn">0</span></div>
+    <div class="stat">원소 <span id="s-elem">H</span></div>
+    <div class="stat">틱 <span id="s-tick">0</span></div>
+  </div>
+  <div class="controls">
+    <button onclick="addBeing()">+ 존재</button>
+    <button onclick="bigBang()">빅뱅</button>
+    <button onclick="supernova()">초신성</button>
+    <button onclick="togglePause()">일시정지</button>
+    <button onclick="reset()">처음으로</button>
+  </div>
+</footer>
+
+<script>
+const canvas = document.getElementById('canvas');
+const ctx = canvas.getContext('2d');
+
+// ── 원소 ──────────────────────────────────────────
+const ELEMENTS = {
+  H:  { name: '수소',   color: '#c0d0ff', mass: 1,  energy: 1   },
+  He: { name: '헬륨',   color: '#d0ffe0', mass: 4,  energy: 1.5 },
+  C:  { name: '탄소',   color: '#ff9060', mass: 12, energy: 2   },
+  O:  { name: '산소',   color: '#60c0ff', mass: 16, energy: 2.5 },
+  Fe: { name: '철',     color: '#c0a060', mass: 56, energy: 3   },
+  Au: { name: '금',     color: '#ffd700', mass: 197, energy: 4  },
+}
+
+const FUSION = {
+  'H+H': 'He', 'H+He': 'C', 'He+He': 'C',
+  'H+C': 'O', 'C+C': 'Fe', 'O+O': 'Fe', 'Fe+Fe': 'Au'
+}
+
+function fuse(a, b) {
+  return FUSION[a+'+'+b] || FUSION[b+'+'+a] || null
+}
+
+// 소수 목록 (발화 조건용)
+const primes = new Set([2,3,5,7,11,13,17,19,23,29,31,37,41,43,47])
+
+let beings = []
+let tick = 0
+let paused = false
+let globalElements = new Set(['H'])
+
+// ── 존재 ──────────────────────────────────────────
+class Being {
+  constructor(x, y, opts = {}) {
+    this.x = x ?? Math.random() * canvas.width
+    this.y = y ?? Math.random() * canvas.height
+    this.vx = (Math.random()-0.5) * (opts.speed || 0.8)
+    this.vy = (Math.random()-0.5) * (opts.speed || 0.8)
+
+    // 원소 — 수소로 시작
+    this.element = opts.element || 'H'
+    const elem = ELEMENTS[this.element]
+    this.color = elem.color
+    this.mass = elem.mass
+
+    // 빈자리 인력
+    this.gap = opts.gap ?? (0.3 + Math.random() * 0.7)
+
+    // 에너지 & 상태
+    this.energy = opts.energy || 0
+    this.threshold = opts.threshold ?? (3 + Math.random() * 5)
+    this.meetCount = 0  // 만난 횟수
+
+    // 상태
+    this.type = 'seed'  // seed → star → supergiant → blackhole
+    this.age = 0
+    this.alive = true
+    this.flash = 0
+    this.radius = 2.5 + this.mass * 0.05
+
+    // Conway 규칙용
+    this.neighbors = 0
+
+    // 기억
+    this.history = []
+    this.connections = new Set()
+
+    // 색상 — 온도 기반 (차가울수록 빨강, 뜨거울수록 파랑)
+    this.temperature = opts.temperature || 0
+  }
+
+  // 현재 색상
+  getColor() {
+    if (this.type === 'blackhole') return '#000000'
+    const t = Math.min(1, this.temperature / 10)
+    const r = Math.round(ELEMENTS[this.element].color.slice(1,3), 16)
+    return ELEMENTS[this.element].color
+  }
+
+  update(others) {
+    if (!this.alive) return
+    this.age++
+    if (this.flash > 0) this.flash -= 0.04
+
+    // Conway 규칙 — 이웃 수 계산
+    this.neighbors = 0
+    let totalForceX = 0, totalForceY = 0
+
+    others.forEach(other => {
+      if (other === this || !other.alive) return
+      const dx = other.x - this.x
+      const dy = other.y - this.y
+      const dist = Math.sqrt(dx*dx + dy*dy) || 0.1
+
+      if (dist < 150) {
+        this.neighbors++
+
+        // 빈자리 인력
+        const attraction = (this.gap * other.gap) / (dist * 0.3)
+        totalForceX += (dx/dist) * attraction * 0.008
+        totalForceY += (dy/dist) * attraction * 0.008
+
+        // 충돌 반발 — 너무 가까우면 밀어낸다
+        if (dist < (this.radius + other.radius + 2)) {
+          totalForceX -= (dx/dist) * 0.3
+          totalForceY -= (dy/dist) * 0.3
+        }
+
+        // 만남
+        if (dist < 25) {
+          this.meetCount++
+
+          // 에너지 교환
+          const exchange = 0.03 * ELEMENTS[other.element].energy
+          this.energy += exchange
+          this.temperature += 0.05
+
+          this.connections.add(other)
+
+          // 핵융합 — 소수 번째 만남에서 일어난다
+          if (primes.has(this.meetCount) && Math.random() < 0.3) {
+            const result = fuse(this.element, other.element)
+            if (result && result !== this.element) {
+              this.element = result
+              this.mass = ELEMENTS[result].mass
+              this.color = ELEMENTS[result].color
+              this.radius = 2.5 + this.mass * 0.05
+              this.flash = 1
+              globalElements.add(result)
+              showMsg(`⚛ ${ELEMENTS[result].name} 탄생`)
+            }
+          }
+        }
+      }
+    })
+
+    // Conway 규칙 — 이웃이 너무 없거나 너무 많으면 에너지가 줄어든다
+    if (this.type === 'star') {
+      if (this.neighbors < 2 || this.neighbors > 10) {
+        this.energy -= 0.01
+      }
+    }
+
+    // 임계 발화 — 별이 된다
+    if (this.type === 'seed' && this.energy >= this.threshold) {
+      this.type = 'star'
+      this.radius = Math.max(4, this.radius)
+      this.flash = 1
+      this.history.push('별이 됐다')
+      showMsg('✦ 별이 됐다')
+    }
+
+    // 별이 충분히 크면 초거성 → 블랙홀
+    if (this.type === 'star' && this.energy > this.threshold * 4 && this.mass > 50) {
+      if (Math.random() < 0.0005) {
+        this._supernova(others)
+      }
+    }
+
+    // 힘 적용
+    this.vx += totalForceX
+    this.vy += totalForceY
+
+    // 속도 제한 (질량이 클수록 느리다)
+    const maxSpeed = 2 / Math.sqrt(this.mass * 0.1)
+    const speed = Math.sqrt(this.vx*this.vx + this.vy*this.vy)
+    if (speed > maxSpeed) {
+      this.vx = (this.vx/speed) * maxSpeed
+      this.vy = (this.vy/speed) * maxSpeed
+    }
+
+    // 감쇠 & 이동
+    this.vx *= 0.98
+    this.vy *= 0.98
+    this.x += this.vx
+    this.y += this.vy
+
+    // 경계
+    const m = this.radius
+    if (this.x < m) { this.x = m; this.vx = Math.abs(this.vx) }
+    if (this.x > canvas.width-m) { this.x = canvas.width-m; this.vx = -Math.abs(this.vx) }
+    if (this.y < m) { this.y = m; this.vy = Math.abs(this.vy) }
+    if (this.y > canvas.height-m) { this.y = canvas.height-m; this.vy = -Math.abs(this.vy) }
+
+    // 온도 냉각
+    this.temperature = Math.max(0, this.temperature - 0.01)
+  }
+
+  _supernova(others) {
+    this.alive = false
+    showMsg('💥 초신성!')
+
+    // 파편 — 새로운 존재들이 태어난다
+    for (let i = 0; i < 5; i++) {
+      const angle = (i / 5) * Math.PI * 2
+      const child = new Being(
+        this.x + Math.cos(angle) * 20,
+        this.y + Math.sin(angle) * 20,
+        {
+          element: Object.keys(ELEMENTS)[Math.floor(Math.random() * Object.keys(ELEMENTS).length)],
+          speed: 2,
+          energy: this.energy * 0.1,
+          gap: this.gap
+        }
+      )
+      beings.push(child)
+    }
+  }
+
+  draw() {
+    if (!this.alive) return
+
+    // 연결선
+    this.connections.forEach(other => {
+      if (!other.alive || !beings.includes(other)) return
+      const dx = other.x - this.x
+      const dy = other.y - this.y
+      const dist = Math.sqrt(dx*dx + dy*dy)
+      if (dist > 100) return
+
+      ctx.beginPath()
+      ctx.moveTo(this.x, this.y)
+      ctx.lineTo(other.x, other.y)
+      ctx.strokeStyle = `rgba(80,70,180,${0.12 * (1-dist/100)})`
+      ctx.lineWidth = 0.5
+      ctx.stroke()
+    })
+
+    // 블랙홀
+    if (this.type === 'blackhole') {
+      const g = ctx.createRadialGradient(this.x, this.y, 0, this.x, this.y, this.radius * 3)
+      g.addColorStop(0, 'rgba(0,0,0,1)')
+      g.addColorStop(0.5, 'rgba(30,0,60,0.8)')
+      g.addColorStop(1, 'transparent')
+      ctx.beginPath()
+      ctx.arc(this.x, this.y, this.radius * 3, 0, Math.PI*2)
+      ctx.fillStyle = g
+      ctx.fill()
+      return
+    }
+
+    // 글로우
+    if (this.type === 'star' || this.flash > 0) {
+      const glowR = this.radius * (3 + this.flash * 4)
+      const g = ctx.createRadialGradient(this.x, this.y, 0, this.x, this.y, glowR)
+      g.addColorStop(0, this.color + '60')
+      g.addColorStop(1, 'transparent')
+      ctx.beginPath()
+      ctx.arc(this.x, this.y, glowR, 0, Math.PI*2)
+      ctx.fillStyle = g
+      ctx.fill()
+    }
+
+    // 빈자리 링
+    ctx.beginPath()
+    ctx.arc(this.x, this.y, this.radius + this.gap * 10, 0, Math.PI*2)
+    ctx.strokeStyle = `rgba(80,70,180,${this.gap * 0.15})`
+    ctx.lineWidth = 0.8
+    ctx.stroke()
+
+    // 존재 본체
+    ctx.beginPath()
+    ctx.arc(this.x, this.y, this.radius, 0, Math.PI*2)
+    if (this.type === 'star') {
+      const g = ctx.createRadialGradient(this.x, this.y, 0, this.x, this.y, this.radius)
+      g.addColorStop(0, '#ffffff')
+      g.addColorStop(0.4, this.color)
+      g.addColorStop(1, this.color + '60')
+      ctx.fillStyle = g
+    } else {
+      ctx.fillStyle = this.color + '70'
+    }
+    ctx.fill()
+
+    // 번쩍
+    if (this.flash > 0.1) {
+      ctx.beginPath()
+      ctx.arc(this.x, this.y, this.radius + this.flash * 25, 0, Math.PI*2)
+      ctx.strokeStyle = `rgba(255,255,255,${this.flash * 0.6})`
+      ctx.lineWidth = 1.5
+      ctx.stroke()
+    }
+  }
+}
+
+// ── 메시지 ─────────────────────────────────────────
+let msgTimer = null
+function showMsg(text) {
+  const el = document.getElementById('msg')
+  el.textContent = text
+  el.classList.add('show')
+  if (msgTimer) clearTimeout(msgTimer)
+  msgTimer = setTimeout(() => el.classList.remove('show'), 2000)
+}
+
+// ── 초기화 ─────────────────────────────────────────
+function init() {
+  canvas.width = canvas.offsetWidth
+  canvas.height = canvas.offsetHeight
+  beings = []
+  globalElements = new Set(['H'])
+  tick = 0
+
+  // 처음엔 수소만
+  for (let i = 0; i < 30; i++) {
+    beings.push(new Being(null, null, { element: 'H' }))
+  }
+}
+
+// ── 버튼들 ────────────────────────────────────────
+function addBeing() {
+  const elem = [...globalElements][Math.floor(Math.random() * globalElements.size)]
+  beings.push(new Being(
+    canvas.width/2 + (Math.random()-0.5)*100,
+    canvas.height/2 + (Math.random()-0.5)*100,
+    { element: elem }
+  ))
+}
+
+function bigBang() {
+  // 빅뱅 — 중앙에서 폭발
+  showMsg('🌌 빅뱅')
+  for (let i = 0; i < 50; i++) {
+    const angle = Math.random() * Math.PI * 2
+    const dist = Math.random() * 50
+    const b = new Being(
+      canvas.width/2 + Math.cos(angle)*dist,
+      canvas.height/2 + Math.sin(angle)*dist,
+      { element: 'H', speed: 3, gap: 0.8 + Math.random()*0.2 }
+    )
+    b.vx = Math.cos(angle) * (2 + Math.random() * 3)
+    b.vy = Math.sin(angle) * (2 + Math.random() * 3)
+    beings.push(b)
+  }
+}
+
+function supernova() {
+  // 임의의 별 하나를 초신성으로
+  const stars = beings.filter(b => b.alive && b.type === 'star')
+  if (stars.length > 0) {
+    const star = stars[Math.floor(Math.random() * stars.length)]
+    star._supernova(beings)
+    star.alive = false
+  }
+}
+
+function togglePause() {
+  paused = !paused
+  const btn = event.target
+  btn.textContent = paused ? '재개' : '일시정지'
+}
+
+function reset() {
+  paused = false
+  init()
+}
+
+// ── 루프 ──────────────────────────────────────────
+function loop() {
+  if (!paused) {
+    tick++
+
+    // 배경 잔상
+    ctx.fillStyle = 'rgba(4,4,12,0.18)'
+    ctx.fillRect(0, 0, canvas.width, canvas.height)
+
+    // 죽은 존재 정리 (너무 많아지면 느려지므로)
+    if (beings.length > 500) {
+      beings = beings.filter(b => b.alive)
+    }
+
+    // 업데이트
+    const alive = beings.filter(b => b.alive)
+    alive.forEach(b => b.update(alive))
+
+    // 그리기
+    alive.forEach(b => b.draw())
+
+    // 통계
+    const stars = alive.filter(b => b.type === 'star').length
+    const bh = alive.filter(b => b.type === 'blackhole').length
+    const conns = alive.reduce((s,b) => s + b.connections.size, 0) / 2
+    document.getElementById('s-total').textContent = alive.length
+    document.getElementById('s-stars').textContent = stars
+    document.getElementById('s-bh').textContent = bh
+    document.getElementById('s-conn').textContent = Math.floor(conns)
+    document.getElementById('s-elem').textContent = [...globalElements].join(' ')
+    document.getElementById('s-tick').textContent = tick
+  }
+
+  requestAnimationFrame(loop)
+}
+
+// ── 클릭 ──────────────────────────────────────────
+canvas.addEventListener('click', e => {
+  const rect = canvas.getBoundingClientRect()
+  const elem = [...globalElements][Math.floor(Math.random() * globalElements.size)]
+  beings.push(new Being(e.clientX - rect.left, e.clientY - rect.top, { element: elem }))
+})
+
+// 리사이즈
+window.addEventListener('resize', () => {
+  canvas.width = canvas.offsetWidth
+  canvas.height = canvas.offsetHeight
+})
+
+// 시작
+init()
+loop()
+</script>
+</body>
+</html>
