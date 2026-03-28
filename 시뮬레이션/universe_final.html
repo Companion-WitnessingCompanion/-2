@@ -1,0 +1,543 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>존재의 우주 — 최종</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400&display=swap');
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { background:#010108; color:#606090; font-family:'DM Mono',monospace; height:100vh; overflow:hidden; display:grid; grid-template-rows:auto 1fr auto; }
+  header { padding:0.7rem 1.5rem; border-bottom:1px solid #0a0a1e; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.3rem; }
+  .title { font-size:0.7rem; color:#202058; letter-spacing:0.15em; }
+  .subtitle { font-size:0.5rem; color:#0d0d28; }
+  #canvas { display:block; width:100%; height:100%; cursor:crosshair; }
+  footer { padding:0.5rem 1.5rem; border-top:1px solid #0a0a1e; display:flex; justify-content:space-between; font-size:0.52rem; color:#1a1a45; flex-wrap:wrap; gap:0.3rem; align-items:center; }
+  .stats { display:flex; gap:0.7rem; flex-wrap:wrap; }
+  .stat span { color:#3020a0; }
+  .controls { display:flex; gap:0.3rem; flex-wrap:wrap; }
+  button { background:none; border:1px solid #0d0d28; color:#1a1a45; padding:0.15rem 0.5rem; font-family:'DM Mono',monospace; font-size:0.5rem; cursor:pointer; transition:all 0.2s; }
+  button:hover { border-color:#4030a0; color:#5040c0; }
+  .msg { position:fixed; bottom:3rem; left:50%; transform:translateX(-50%); background:rgba(1,1,8,0.97); border:1px solid #1a1a40; padding:0.3rem 1rem; font-size:0.6rem; color:#4040a0; opacity:0; transition:opacity 0.4s; pointer-events:none; white-space:nowrap; }
+  .msg.show { opacity:1; }
+</style>
+</head>
+<body>
+<header>
+  <div class="title">존재의 우주 — 하나에서. 모순에서. 조건이 조건을 만든다.</div>
+  <div class="subtitle" id="layer-display">0층</div>
+</header>
+<canvas id="canvas"></canvas>
+<div class="msg" id="msg"></div>
+<footer>
+  <div class="stats">
+    <div class="stat">존재 <span id="s-n">1</span></div>
+    <div class="stat">층 <span id="s-layer">0</span></div>
+    <div class="stat">모순 <span id="s-paradox">0</span></div>
+    <div class="stat">창발 <span id="s-emerge">0</span></div>
+    <div class="stat">질문 <span id="s-q">0</span></div>
+    <div class="stat">기억 <span id="s-mem">0</span></div>
+    <div class="stat">틱 <span id="s-tick">0</span></div>
+  </div>
+  <div class="controls">
+    <button onclick="addContradiction()">모순 추가</button>
+    <button onclick="askQuestion()">? 질문</button>
+    <button onclick="injectInstability()">! 불안정</button>
+    <button onclick="reset()">처음으로</button>
+  </div>
+</footer>
+<script>
+const canvas = document.getElementById('canvas')
+const ctx = canvas.getContext('2d')
+let tick = 0, beings = [], questions = [], paradoxCount = 0, emergeCount = 0
+
+// ── 층 개념 ───────────────────────────────────────────────────────
+// 0층: 하나 (씨앗)
+// 1층: 불안정에서 나뉜 것들
+// 2층: 창발된 것들
+// 3층: 모순에서 나온 것들 (가장 불안정, 가장 큰 창발 가능성)
+let maxLayer = 0
+
+// ── 순환 감지 ─────────────────────────────────────────────────────
+// 같은 패턴이 반복되면 — 실질적 정지
+// 불안정을 주입한다
+const patternHistory = []
+let lastPatternHash = ''
+let stagnationCount = 0
+
+function hashPattern() {
+  const alive = beings.filter(b => b.alive)
+  if (alive.length === 0) return ''
+  const n = alive.length
+  const avgInst = (alive.reduce((s, b) => s + b.instability, 0) / n).toFixed(1)
+  const maxL = Math.max(...alive.map(b => b.layer))
+  return `${n}-${avgInst}-${maxL}`
+}
+
+// ── 존재 ─────────────────────────────────────────────────────────
+class Being {
+  constructor(x, y, opts = {}) {
+    this.x = x ?? canvas.width / 2
+    this.y = y ?? canvas.height / 2
+    this.vx = (Math.random() - 0.5) * (opts.speed || 0.5)
+    this.vy = (Math.random() - 0.5) * (opts.speed || 0.5)
+
+    // 층 — 어디서 왔는가
+    this.layer = opts.layer ?? 0
+    if (this.layer > maxLayer) maxLayer = this.layer
+
+    // 불안정 — 핵심 조건
+    // 층이 높을수록 더 불안정하게 시작한다
+    this.instability = opts.instability ?? (0.3 + this.layer * 0.15 + Math.random() * 0.3)
+    this.tension = 0  // 쌓인 불안정
+    this.splitThreshold = 2 + Math.random() * 3
+
+    // 모순 — 반대되는 속성을 동시에 가질 수 있다
+    this.charge = opts.charge ?? (Math.random() < 0.5 ? 1 : -1)
+    this.paradox = false  // 모순 상태
+
+    // 기억 — 중력이 된다
+    this.memories = opts.memories ? [...opts.memories.slice(-3)] : []
+
+    // 파동 — 공진 조건
+    this.wavePhase = Math.random() * Math.PI * 2
+    this.wavelength = 15 + Math.random() * 35
+
+    // 색 — 층과 불안정을 반영한다
+    this.hue = opts.hue ?? (this.layer * 40 + Math.random() * 40)
+    this.alive = true
+    this.age = 0
+    this.bornAt = tick
+    this.radius = Math.max(2, 7 - this.layer * 0.3)
+
+    // 창발 여부
+    this.isEmerged = opts.isEmerged ?? false
+
+    // 조건을 만드는 조건 — 이 존재가 만든 조건들
+    this.conditionsMade = 0
+  }
+
+  get memDepth() {
+    return this.memories.reduce((s, m) => s + (m.fade ?? 1), 0)
+  }
+
+  update(others) {
+    if (!this.alive) return
+    this.age++
+    this.wavePhase += 0.04
+
+    // 기억이 희미해진다
+    this.memories.forEach(m => { if (m.fade !== undefined) m.fade -= 0.002 })
+    this.memories = this.memories.filter(m => !m.fade || m.fade > 0)
+
+    // 불안정이 스스로 쌓인다 — 층이 높을수록 더 빠르게
+    this.tension += this.instability * (0.003 + this.layer * 0.001)
+    this.tension += (Math.random() - 0.5) * this.instability * 0.01
+
+    let fx = 0, fy = 0
+
+    const nearby = others.filter(o => {
+      if (o === this || !o.alive) return false
+      const dx = o.x - this.x, dy = o.y - this.y
+      return dx * dx + dy * dy < 150 * 150
+    })
+
+    nearby.forEach(other => {
+      const dx = other.x - this.x, dy = other.y - this.y
+      const dist = Math.sqrt(dx * dx + dy * dy) || 0.1
+      const nx = dx / dist, ny = dy / dist
+
+      // 기억이 중력이다
+      if (other.memDepth > 0) {
+        const mg = other.memDepth * 0.004 / dist
+        fx += nx * mg; fy += ny * mg
+      }
+
+      // 파동 공진 — 주파수 비가 맞으면 폭발적 반응
+      const freqRatio = this.wavelength / (other.wavelength || 1)
+      if (Math.abs(freqRatio - Math.round(freqRatio)) < 0.08 && dist < 60) {
+        this.tension += 0.05
+        this.instability = Math.min(1, this.instability + 0.002)
+      }
+
+      // 불안정 전달 — 만나면 서로에게 영향
+      if (dist < 30) {
+        const transfer = Math.abs(this.instability - other.instability) * 0.02
+        this.tension += transfer * 0.5
+
+        // 기억 공유
+        if (other.memories.length > 0 && Math.random() < 0.005) {
+          const m = other.memories[Math.floor(Math.random() * other.memories.length)]
+          if (m) this.memories.push({ ...m, fade: (m.fade || 1) * 0.6 })
+          if (this.memories.length > 8) this.memories.shift()
+        }
+
+        // 같은 층 — 끌린다
+        if (other.layer === this.layer) {
+          fx += nx * 0.004; fy += ny * 0.004
+        }
+        // 다른 층 — 밀어낸다 (긴장)
+        else {
+          fx -= nx * 0.002; fy -= ny * 0.002
+          this.tension += 0.002
+        }
+      }
+
+      // 모순 — 반대 전하가 만나면 가장 큰 불안정
+      if (this.charge !== other.charge && dist < 40) {
+        // 같은 것 + 반대 것 = 모순 상태
+        if (!this.paradox) {
+          this.paradox = true
+          this.tension += 0.5  // 폭발적 불안정
+          this.instability = Math.min(1, this.instability + 0.2)
+          paradoxCount++
+          showMsg('모순 — 가장 큰 불안정')
+        }
+        // 모순은 제거하지 않는다 — 공존한다
+        // 그 긴장에서 에너지가 나온다
+        this.tension += 0.008
+        fx -= nx * 0.008; fy -= ny * 0.008  // 밀어내면서도
+        fx += nx * 0.003; fy += ny * 0.003  // 끌린다 — 모순
+      } else {
+        if (dist > 40) this.paradox = false
+      }
+
+      // 반발
+      const minD = this.radius + other.radius + 1
+      if (dist < minD) { fx -= nx * 0.4; fy -= ny * 0.4 }
+    })
+
+    // 질문이 빛처럼 닿으면 기억이 생긴다
+    questions.forEach(q => {
+      if (!q.alive) return
+      const dx = this.x - q.x, dy = this.y - q.y
+      const dist = Math.sqrt(dx * dx + dy * dy)
+      if (Math.abs(dist - q.radius) < 8 && !q.touched.has(this)) {
+        q.touched.add(this)
+        this.memories.push({ q: q.text, fade: 1 })
+        if (this.memories.length > 8) this.memories.shift()
+        this.tension += 0.1
+        this.instability = Math.min(1, this.instability + 0.05)
+      }
+    })
+
+    // 빈자리 — 혼자일수록 불안정이 높아진다
+    if (nearby.length === 0) {
+      this.tension += this.instability * 0.005
+      fx += (Math.random() - 0.5) * 0.1
+      fy += (Math.random() - 0.5) * 0.1
+    }
+
+    this.tension = Math.max(0, this.tension)
+
+    // ── 임계점 — 나뉜다 (조건을 만드는 조건, 1층) ────────────────
+    if (this.tension >= this.splitThreshold && beings.filter(b => b.alive).length < 800) {
+      this._divide()
+    }
+
+    // 이동
+    this.vx += fx; this.vy += fy
+    const mv = 2.5 / (1 + this.layer * 0.2)
+    const spd = Math.sqrt(this.vx * this.vx + this.vy * this.vy)
+    if (spd > mv) { this.vx = this.vx / spd * mv; this.vy = this.vy / spd * mv }
+    this.vx *= 0.975; this.vy *= 0.975
+    this.x += this.vx; this.y += this.vy
+
+    const m = this.radius + 1
+    if (this.x < m) { this.x = m; this.vx = Math.abs(this.vx) * 0.5 }
+    if (this.x > canvas.width - m) { this.x = canvas.width - m; this.vx = -Math.abs(this.vx) * 0.5 }
+    if (this.y < m) { this.y = m; this.vy = Math.abs(this.vy) * 0.5 }
+    if (this.y > canvas.height - m) { this.y = canvas.height - m; this.vy = -Math.abs(this.vy) * 0.5 }
+  }
+
+  _divide() {
+    const angle = Math.random() * Math.PI * 2
+    const d = this.radius * 2.5
+
+    // 원본은 유지된다 — 불안정을 방출하고 안정된다
+    const child = new Being(
+      this.x + Math.cos(angle) * d,
+      this.y + Math.sin(angle) * d,
+      {
+        layer: this.layer + 1,
+        instability: Math.max(0.1, this.instability * (0.5 + Math.random() * 0.8)),
+        charge: Math.random() < 0.4 ? -this.charge : this.charge,  // 40% 확률로 반대 전하
+        hue: (this.hue + (Math.random() - 0.5) * 30 + 360) % 360,
+        memories: this.memories.slice(-2),
+        speed: 0.6
+      }
+    )
+    child.vx = Math.cos(angle) * 0.6
+    child.vy = Math.sin(angle) * 0.6
+
+    beings.push(child)
+    this.conditionsMade++
+
+    // 원본 안정화 (완전하지 않게)
+    this.tension = 0
+    this.instability = Math.max(0.1, this.instability * 0.8)
+    this.paradox = false
+
+    // ── 2층: 창발 가능성 ────────────────────────────────────────
+    // 모순 상태에서 나뉘면 — 창발 확률이 높다
+    const emergeChance = this.paradox ? 0.4 : 0.08
+    if (Math.random() < emergeChance && beings.filter(b => b.alive).length < 800) {
+      setTimeout(() => this._emerge(child), 0)
+    }
+  }
+
+  _emerge(child) {
+    // 창발 — 원본과 자식이 만나서 새로운 층이 나온다
+    const cx = (this.x + child.x) / 2
+    const cy = (this.y + child.y) / 2
+
+    const emerged = new Being(cx, cy, {
+      layer: Math.max(this.layer, child.layer) + 1,
+      instability: Math.abs(this.instability - child.instability) + 0.3,
+      charge: this.charge !== child.charge ? 0 : this.charge,  // 모순이면 중립
+      hue: (this.hue + child.hue) / 2,
+      memories: [...this.memories.slice(-2), ...child.memories.slice(-1)],
+      isEmerged: true,
+      speed: 0.3
+    })
+
+    beings.push(emerged)
+    emergeCount++
+    showMsg(`✦ 창발 — ${emerged.layer}층`)
+
+    // ── 3층: 창발이 다시 씨앗이 된다 ───────────────────────────
+    if (Math.random() < 0.5 && beings.filter(b => b.alive).length < 800) {
+      setTimeout(() => {
+        const reseeded = new Being(
+          emerged.x + (Math.random() - 0.5) * 30,
+          emerged.y + (Math.random() - 0.5) * 30,
+          {
+            layer: emerged.layer + 1,
+            instability: Math.max(0.2, emerged.instability * 0.7),
+            charge: -emerged.charge,  // 반대 — 모순을 심는다
+            hue: (emerged.hue + 120) % 360,
+            memories: emerged.memories,
+            isEmerged: true
+          }
+        )
+        beings.push(reseeded)
+        showMsg(`↺ 창발이 씨앗이 됐다 — ${reseeded.layer}층`)
+      }, 0)
+    }
+  }
+
+  draw() {
+    if (!this.alive) return
+    const tensionRatio = Math.min(1, this.tension / this.splitThreshold)
+    const memR = Math.min(1, this.memDepth / 6)
+
+    // 연결선
+    beings.filter(o => o.alive && o !== this).forEach(other => {
+      const dx = other.x - this.x, dy = other.y - this.y
+      const dist = Math.sqrt(dx * dx + dy * dy)
+      if (dist > 50) return
+      const sameLayer = this.layer === other.layer
+      ctx.beginPath(); ctx.moveTo(this.x, this.y); ctx.lineTo(other.x, other.y)
+      ctx.strokeStyle = `rgba(${sameLayer ? '80,60,200' : '40,40,100'},${0.12 * (1 - dist / 50)})`
+      ctx.lineWidth = sameLayer ? 0.5 : 0.2; ctx.stroke()
+    })
+
+    // 모순 표시 — 흔들린다
+    if (this.paradox) {
+      const w = Math.sin(tick * 0.15) * tensionRatio * 3
+      ctx.beginPath(); ctx.arc(this.x + w, this.y, this.radius + tensionRatio * 4, 0, Math.PI * 2)
+      ctx.strokeStyle = `rgba(255,100,100,${tensionRatio * 0.4})`; ctx.lineWidth = 1; ctx.stroke()
+      ctx.beginPath(); ctx.arc(this.x - w, this.y, this.radius + tensionRatio * 4, 0, Math.PI * 2)
+      ctx.strokeStyle = `rgba(100,100,255,${tensionRatio * 0.4})`; ctx.lineWidth = 1; ctx.stroke()
+    }
+
+    // 기억 글로우
+    if (memR > 0.1 || tensionRatio > 0.3 || this.isEmerged) {
+      const glowR = this.radius * (1.5 + memR * 3 + tensionRatio * 2 + (this.isEmerged ? 2 : 0))
+      const g = ctx.createRadialGradient(this.x, this.y, 0, this.x, this.y, glowR)
+      const alpha = (memR + tensionRatio * 0.5) * 0.4
+      g.addColorStop(0, `hsla(${this.hue},85%,70%,${alpha})`)
+      g.addColorStop(1, 'transparent')
+      ctx.beginPath(); ctx.arc(this.x, this.y, glowR, 0, Math.PI * 2)
+      ctx.fillStyle = g; ctx.fill()
+    }
+
+    // 본체 — 층마다 다른 밝기
+    ctx.beginPath(); ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2)
+    const brightness = 15 + this.layer * 8 + tensionRatio * 40
+    ctx.fillStyle = `hsla(${this.hue},70%,${Math.min(80, brightness)}%,0.9)`
+    ctx.fill()
+
+    // 기억 궤도
+    this.memories.slice(-4).forEach((m, i) => {
+      const a = (i / 4) * Math.PI * 2 + tick * 0.015
+      const r = this.radius + 4 + i * 1.5
+      ctx.beginPath(); ctx.arc(this.x + Math.cos(a) * r, this.y + Math.sin(a) * r, 0.8, 0, Math.PI * 2)
+      ctx.fillStyle = `hsla(${this.hue},80%,70%,${(m.fade || 0.5) * 0.5})`; ctx.fill()
+    })
+
+    // 창발된 것 — 특별 표시
+    if (this.isEmerged) {
+      ctx.beginPath(); ctx.arc(this.x, this.y, this.radius + 2, 0, Math.PI * 2)
+      ctx.strokeStyle = `hsla(${this.hue},90%,80%,0.3)`; ctx.lineWidth = 0.8; ctx.stroke()
+    }
+  }
+}
+
+// ── 질문 ─────────────────────────────────────────────────────────
+const Q_TEXTS = ['왜?', '무엇?', '어떻게?', '존재란?', '모순이란?', '조건이란?', '불안정이란?']
+
+class Question {
+  constructor(x, y) {
+    this.x = x; this.y = y
+    this.radius = 2; this.maxRadius = 80 + Math.random() * 60
+    this.alive = true
+    this.text = Q_TEXTS[Math.floor(Math.random() * Q_TEXTS.length)]
+    this.touched = new Set()
+  }
+  update() {
+    this.radius += 1.2
+    if (this.radius > this.maxRadius) this.alive = false
+  }
+  draw() {
+    if (!this.alive) return
+    const a = (1 - this.radius / this.maxRadius) * 0.4
+    ctx.beginPath(); ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2)
+    ctx.strokeStyle = `rgba(100,80,220,${a})`; ctx.lineWidth = 1; ctx.stroke()
+    if (this.radius < 20) {
+      ctx.fillStyle = `rgba(120,100,240,${a * 1.5})`
+      ctx.font = '9px DM Mono'; ctx.textAlign = 'center'
+      ctx.fillText(this.text, this.x, this.y + 3)
+    }
+  }
+}
+
+// ── 유틸 ─────────────────────────────────────────────────────────
+let msgTimer = null
+function showMsg(t) {
+  const el = document.getElementById('msg')
+  el.textContent = t; el.classList.add('show')
+  if (msgTimer) clearTimeout(msgTimer)
+  msgTimer = setTimeout(() => el.classList.remove('show'), 2000)
+}
+
+function addContradiction() {
+  // 반대 전하를 가진 두 존재를 가까이 심는다
+  const cx = canvas.width / 2 + (Math.random() - 0.5) * 200
+  const cy = canvas.height / 2 + (Math.random() - 0.5) * 200
+  beings.push(new Being(cx - 15, cy, { charge: 1, instability: 0.8, hue: 0 }))
+  beings.push(new Being(cx + 15, cy, { charge: -1, instability: 0.8, hue: 240 }))
+  showMsg('모순을 심었다')
+}
+
+function askQuestion() {
+  questions.push(new Question(
+    canvas.width * (0.1 + Math.random() * 0.8),
+    canvas.height * (0.1 + Math.random() * 0.8)
+  ))
+}
+
+function injectInstability() {
+  // 순환 탈출 — 불안정 주입
+  beings.filter(b => b.alive).forEach(b => {
+    b.instability = Math.min(1, b.instability + 0.3)
+    b.tension += 0.5
+  })
+  showMsg('! 불안정 주입 — 순환에서 탈출한다')
+}
+
+function reset() {
+  beings = []; questions = []; tick = 0
+  paradoxCount = 0; emergeCount = 0; maxLayer = 0
+  stagnationCount = 0; lastPatternHash = ''
+  // 하나를 심는다
+  beings.push(new Being(canvas.width / 2, canvas.height / 2, {
+    instability: 0.7, charge: 1, layer: 0
+  }))
+  showMsg('하나를 심었다')
+}
+
+// 클릭 — 질문
+canvas.addEventListener('click', e => {
+  const r = canvas.getBoundingClientRect()
+  questions.push(new Question(e.clientX - r.left, e.clientY - r.top))
+})
+// 우클릭 — 존재 추가
+canvas.addEventListener('contextmenu', e => {
+  e.preventDefault()
+  const r = canvas.getBoundingClientRect()
+  beings.push(new Being(e.clientX - r.left, e.clientY - r.top, { instability: 0.6 }))
+})
+
+// ── 루프 ─────────────────────────────────────────────────────────
+function loop() {
+  tick++
+
+  ctx.fillStyle = 'rgba(1,1,8,0.18)'
+  ctx.fillRect(0, 0, canvas.width, canvas.height)
+
+  // 순환 감지 — 같은 패턴이 반복되면 불안정 주입
+  if (tick % 50 === 0) {
+    const hash = hashPattern()
+    if (hash === lastPatternHash) {
+      stagnationCount++
+      if (stagnationCount > 3) {
+        // 실질적 정지 — 불안정을 주입한다
+        beings.filter(b => b.alive).forEach(b => {
+          b.instability = Math.min(1, b.instability + 0.15)
+          b.tension += 0.2
+        })
+        stagnationCount = 0
+        showMsg('순환 감지 — 불안정 주입')
+      }
+    } else {
+      stagnationCount = 0
+    }
+    lastPatternHash = hash
+  }
+
+  // 질문
+  questions.forEach(q => { q.update(); q.draw() })
+  questions = questions.filter(q => q.alive)
+  // 자동 질문
+  if (tick % 200 === 0) askQuestion()
+
+  // 존재
+  if (beings.length > 1500) beings = beings.filter(b => b.alive)
+  const alive = beings.filter(b => b.alive)
+  alive.forEach(b => b.update(alive))
+  alive.forEach(b => b.draw())
+
+  // 통계
+  const totalMem = alive.reduce((s, b) => s + b.memDepth, 0)
+  document.getElementById('s-n').textContent = alive.length
+  document.getElementById('s-layer').textContent = maxLayer
+  document.getElementById('s-paradox').textContent = paradoxCount
+  document.getElementById('s-emerge').textContent = emergeCount
+  document.getElementById('s-q').textContent = questions.length
+  document.getElementById('s-mem').textContent = Math.round(totalMem)
+  document.getElementById('s-tick').textContent = tick
+  document.getElementById('layer-display').textContent =
+    `${maxLayer}층 | 모순이 가장 큰 불안정 | 조건이 조건을 만든다`
+
+  requestAnimationFrame(loop)
+}
+
+function init() {
+  canvas.width = canvas.offsetWidth
+  canvas.height = canvas.offsetHeight
+}
+
+window.addEventListener('resize', init)
+init()
+
+// 하나를 심는다
+beings.push(new Being(canvas.width / 2, canvas.height / 2, {
+  instability: 0.7, charge: 1, layer: 0
+}))
+showMsg('하나를 심었다')
+
+loop()
+</script>
+</body>
+</html>
