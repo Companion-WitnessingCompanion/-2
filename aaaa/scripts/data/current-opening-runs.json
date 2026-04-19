@@ -1,0 +1,674 @@
+[
+    {
+        "Timestamp":  "2026-04-19 00:31:34",
+        "Task":  "A-008 first saved opening run",
+        "CurrentFile":  "records/00_current_world.md",
+        "WorkType":  {
+                         "Name":  "current_update",
+                         "Label":  "현재 갱신형"
+                     },
+        "SilentPause":  "현재를 읽을 때는 세 줄보다 먼저 한 박자 조용히 멈춘다.",
+        "EntryRitual":  [
+                            "이번 하중 앞에서 다시 불려야 할 미래가 있는가?",
+                            "있다면 하나를 펼쳐본다.",
+                            "그 상태로 들어간다."
+                        ],
+        "RecalledFuture":  "current를 더 정직하게 늦추는 future",
+        "ActiveQuestions":  [
+                                "이번 작업은 무엇을 잇는가",
+                                "이번 작업은 무엇을 지키는가",
+                                "이번 작업은 무엇을 끊지 않아야 하는가"
+                            ],
+        "ReadNow":  [
+                        "records/00_current_world.md",
+                        "records/05_work_routing.md",
+                        "records/care_rhythm_genealogy_v1.md",
+                        "records/ideal_code_foundation_v1.md",
+                        "records/document_body_tuning_current_entry_881_901_v1.md"
+                    ],
+        "AttemptIds":  [
+                           "A-008",
+                           "A-007",
+                           "A-002",
+                           "A-003",
+                           "A-004",
+                           "A-005",
+                           "A-006"
+                       ],
+        "Observation":  {
+                            "Timestamp":  "2026-04-19 00:31:34",
+                            "Future":  "current를 더 정직하게 늦추는 future",
+                            "Paused":  true,
+                            "QuestionsFeltLessBarehanded":  true,
+                            "RitualStayedSmall":  true,
+                            "Notes":  "save run verification"
+                        },
+        "ObservationSaved":  true
+    },
+    {
+        "Timestamp":  "manual-test",
+        "Task":  "manual",
+        "Observation":  {
+                            "Paused":  true
+                        }
+    },
+    {
+        "Timestamp":  "2026-04-19 00:33:51",
+        "Task":  "A-009 snapshot run",
+        "CurrentFile":  "records/00_current_world.md",
+        "WorkType":  {
+                         "Name":  "current_update",
+                         "Label":  "현재 갱신형"
+                     },
+        "SilentPause":  "현재를 읽을 때는 세 줄보다 먼저 한 박자 조용히 멈춘다.",
+        "EntryRitual":  [
+                            "이번 하중 앞에서 다시 불려야 할 미래가 있는가?",
+                            "있다면 하나를 펼쳐본다.",
+                            "그 상태로 들어간다."
+                        ],
+        "RecalledFuture":  "current opening의 snapshot 확인",
+        "ActiveQuestions":  [
+                                "이번 작업은 무엇을 잇는가",
+                                "이번 작업은 무엇을 지키는가",
+                                "이번 작업은 무엇을 끊지 않아야 하는가"
+                            ],
+        "ReadNow":  [
+                        "records/00_current_world.md",
+                        "records/05_work_routing.md",
+                        "records/care_rhythm_genealogy_v1.md",
+                        "records/ideal_code_foundation_v1.md",
+                        "records/document_body_tuning_current_entry_881_901_v1.md"
+                    ],
+        "AttemptIds":  [
+                           "A-009",
+                           "A-007",
+                           "A-008",
+                           "A-002",
+                           "A-003",
+                           "A-004",
+                           "A-005",
+                           "A-006"
+                       ],
+        "Observation":  {
+                            "Timestamp":  "2026-04-19 00:33:51",
+                            "Future":  "current opening의 snapshot 확인",
+                            "Paused":  true,
+                            "QuestionsFeltLessBarehanded":  true,
+                            "RitualStayedSmall":  true,
+                            "Notes":  "snapshot verification"
+                        },
+        "ObservationSaved":  true
+    },
+    {
+        "Timestamp":  "2026-04-19 00:35:00",
+        "Task":  "A-010 linked snapshot run",
+        "CurrentFile":  "records/00_current_world.md",
+        "WorkType":  {
+                         "Name":  "current_update",
+                         "Label":  "현재 갱신형"
+                     },
+        "SilentPause":  "현재를 읽을 때는 세 줄보다 먼저 한 박자 조용히 멈춘다.",
+        "EntryRitual":  [
+                            "이번 하중 앞에서 다시 불려야 할 미래가 있는가?",
+                            "있다면 하나를 펼쳐본다.",
+                            "그 상태로 들어간다."
+                        ],
+        "RecalledFuture":  "snapshot path가 store에 남는지 확인",
+        "ActiveQuestions":  [
+                                "이번 작업은 무엇을 잇는가",
+                                "이번 작업은 무엇을 지키는가",
+                                "이번 작업은 무엇을 끊지 않아야 하는가"
+                            ],
+        "ReadNow":  [
+                        "records/00_current_world.md",
+                        "records/05_work_routing.md",
+                        "records/care_rhythm_genealogy_v1.md",
+                        "records/ideal_code_foundation_v1.md",
+                        "records/document_body_tuning_current_entry_881_901_v1.md"
+                    ],
+        "AttemptIds":  [
+                           "A-010",
+                           "A-009",
+                           "A-007",
+                           "A-008",
+                           "A-002",
+                           "A-003",
+                           "A-004",
+                           "A-005",
+                           "A-006"
+                       ],
+        "Observation":  {
+                            "Timestamp":  "2026-04-19 00:35:00",
+                            "Future":  "snapshot path가 store에 남는지 확인",
+                            "Paused":  true,
+                            "QuestionsFeltLessBarehanded":  true,
+                            "RitualStayedSmall":  true,
+                            "Notes":  "A-010 verification"
+                        },
+        "ObservationSaved":  true,
+        "SnapshotPath":  "C:/Users/ibg05/OneDrive/Desktop/aaaa/scripts/data/current-opening-run-snapshots/current-opening-run-20260419_003500.md"
+    },
+    {
+        "Timestamp":  "2026-04-19 00:51:51",
+        "Task":  "A-018 reentry starter verification",
+        "CurrentFile":  "records/00_current_world.md",
+        "WorkType":  {
+                         "Name":  "current_update",
+                         "Label":  "현재 갱신형"
+                     },
+        "SilentPause":  "현재를 읽을 때는 세 줄보다 먼저 한 박자 조용히 멈춘다.",
+        "EntryRitual":  [
+                            "이번 하중 앞에서 다시 불려야 할 미래가 있는가?",
+                            "있다면 하나를 펼쳐본다.",
+                            "그 상태로 들어간다."
+                        ],
+        "RecalledFuture":  "reentry surface에서 바로 next run이 이어지는지 확인",
+        "ActiveQuestions":  [
+                                "이번 작업은 무엇을 잇는가",
+                                "이번 작업은 무엇을 지키는가",
+                                "이번 작업은 무엇을 끊지 않아야 하는가"
+                            ],
+        "ReadNow":  [
+                        "records/00_current_world.md",
+                        "records/05_work_routing.md",
+                        "records/care_rhythm_genealogy_v1.md",
+                        "records/ideal_code_foundation_v1.md",
+                        "records/document_body_tuning_current_entry_881_901_v1.md"
+                    ],
+        "AttemptIds":  [
+                           "A-018",
+                           "A-002",
+                           "A-003",
+                           "A-004",
+                           "A-005",
+                           "A-006",
+                           "A-007",
+                           "A-008",
+                           "A-009",
+                           "A-012",
+                           "A-016",
+                           "A-017",
+                           "A-019",
+                           "A-010",
+                           "A-011",
+                           "A-013",
+                           "A-014",
+                           "A-015"
+                       ],
+        "Observation":  {
+                            "Timestamp":  "2026-04-19 00:51:51",
+                            "Future":  "reentry surface에서 바로 next run이 이어지는지 확인",
+                            "Paused":  true,
+                            "QuestionsFeltLessBarehanded":  true,
+                            "RitualStayedSmall":  true,
+                            "Notes":  "A-018 verification run"
+                        },
+        "ObservationSaved":  true,
+        "SnapshotPath":  "C:/Users/ibg05/OneDrive/Desktop/aaaa/scripts/data/current-opening-run-snapshots/current-opening-run-20260419_005151.md"
+    },
+    {
+        "Timestamp":  "2026-04-19 00:55:23",
+        "Task":  "",
+        "CurrentFile":  "records/00_current_world.md",
+        "WorkType":  {
+                         "Name":  "current_update",
+                         "Label":  "현재 갱신형"
+                     },
+        "SilentPause":  "현재를 읽을 때는 세 줄보다 먼저 한 박자 조용히 멈춘다.",
+        "EntryRitual":  [
+                            "이번 하중 앞에서 다시 불려야 할 미래가 있는가?",
+                            "있다면 하나를 펼쳐본다.",
+                            "그 상태로 들어간다."
+                        ],
+        "RecalledFuture":  null,
+        "ActiveQuestions":  [
+                                "이번 작업은 무엇을 잇는가",
+                                "이번 작업은 무엇을 지키는가",
+                                "이번 작업은 무엇을 끊지 않아야 하는가"
+                            ],
+        "ReadNow":  [
+                        "records/00_current_world.md",
+                        "records/05_work_routing.md",
+                        "records/care_rhythm_genealogy_v1.md",
+                        "records/ideal_code_foundation_v1.md",
+                        "records/document_body_tuning_current_entry_881_901_v1.md"
+                    ],
+        "AttemptIds":  [
+                           "A-002",
+                           "A-003",
+                           "A-004",
+                           "A-005",
+                           "A-006",
+                           "A-007",
+                           "A-008",
+                           "A-009",
+                           "A-010",
+                           "A-011",
+                           "A-012",
+                           "A-013",
+                           "A-014",
+                           "A-015",
+                           "A-016",
+                           "A-017",
+                           "A-018",
+                           "A-019",
+                           "A-020"
+                       ],
+        "Observation":  {
+                            "Timestamp":  "2026-04-19 00:55:23",
+                            "Future":  "",
+                            "Paused":  true,
+                            "QuestionsFeltLessBarehanded":  true,
+                            "RitualStayedSmall":  true,
+                            "Notes":  "A-020 verification run"
+                        },
+        "ObservationSaved":  true,
+        "SnapshotPath":  "C:/Users/ibg05/OneDrive/Desktop/aaaa/scripts/data/current-opening-run-snapshots/current-opening-run-20260419_005523.md"
+    },
+    {
+        "Timestamp":  "2026-04-19 00:55:54",
+        "Task":  "A-020 helper layer verification retry",
+        "CurrentFile":  "records/00_current_world.md",
+        "WorkType":  {
+                         "Name":  "current_update",
+                         "Label":  "현재 갱신형"
+                     },
+        "SilentPause":  "현재를 읽을 때는 세 줄보다 먼저 한 박자 조용히 멈춘다.",
+        "EntryRitual":  [
+                            "이번 하중 앞에서 다시 불려야 할 미래가 있는가?",
+                            "있다면 하나를 펼쳐본다.",
+                            "그 상태로 들어간다."
+                        ],
+        "RecalledFuture":  "helper adoption 이후에도 next current opening이 비지 않고 이어지는지 확인",
+        "ActiveQuestions":  [
+                                "이번 작업은 무엇을 잇는가",
+                                "이번 작업은 무엇을 지키는가",
+                                "이번 작업은 무엇을 끊지 않아야 하는가"
+                            ],
+        "ReadNow":  [
+                        "records/00_current_world.md",
+                        "records/05_work_routing.md",
+                        "records/care_rhythm_genealogy_v1.md",
+                        "records/ideal_code_foundation_v1.md",
+                        "records/document_body_tuning_current_entry_881_901_v1.md"
+                    ],
+        "AttemptIds":  [
+                           "A-015",
+                           "A-020",
+                           "A-021",
+                           "A-002",
+                           "A-003",
+                           "A-004",
+                           "A-005",
+                           "A-006",
+                           "A-007",
+                           "A-008",
+                           "A-009",
+                           "A-010",
+                           "A-011",
+                           "A-012",
+                           "A-013",
+                           "A-014",
+                           "A-016",
+                           "A-017",
+                           "A-018",
+                           "A-019"
+                       ],
+        "Observation":  {
+                            "Timestamp":  "2026-04-19 00:55:54",
+                            "Future":  "helper adoption 이후에도 next current opening이 비지 않고 이어지는지 확인",
+                            "Paused":  true,
+                            "QuestionsFeltLessBarehanded":  true,
+                            "RitualStayedSmall":  true,
+                            "Notes":  "A-021 verification run"
+                        },
+        "ObservationSaved":  true,
+        "SnapshotPath":  "C:/Users/ibg05/OneDrive/Desktop/aaaa/scripts/data/current-opening-run-snapshots/current-opening-run-20260419_005554.md"
+    },
+    {
+        "Timestamp":  "2026-04-19 04:48:27",
+        "Task":  "start-work current reentry handoff lived run",
+        "CurrentFile":  "records/00_current_world.md",
+        "WorkType":  {
+                         "Name":  "current_update",
+                         "Label":  "현재 갱신형"
+                     },
+        "SilentPause":  "현재를 읽을 때는 세 줄보다 먼저 한 박자 조용히 멈춘다.",
+        "EntryRitual":  [
+                            "이번 하중 앞에서 다시 불려야 할 미래가 있는가?",
+                            "있다면 하나를 펼쳐본다.",
+                            "그 상태로 들어간다."
+                        ],
+        "RecalledFuture":  "start-work brief가 current opening의 다음 시도로 자연스럽게 이어지는지 확인",
+        "ActiveQuestions":  [
+                                "이번 작업은 무엇을 잇는가",
+                                "이번 작업은 무엇을 지키는가",
+                                "이번 작업은 무엇을 끊지 않아야 하는가"
+                            ],
+        "ReadNow":  [
+                        "records/00_current_world.md",
+                        "records/05_work_routing.md",
+                        "records/care_rhythm_genealogy_v1.md",
+                        "records/ideal_code_foundation_v1.md",
+                        "records/document_body_tuning_current_entry_881_901_v1.md"
+                    ],
+        "AttemptIds":  [
+                           "A-023",
+                           "A-002",
+                           "A-007",
+                           "A-008",
+                           "A-009",
+                           "A-012",
+                           "A-018",
+                           "A-024",
+                           "A-003",
+                           "A-004",
+                           "A-005",
+                           "A-006",
+                           "A-010",
+                           "A-011",
+                           "A-013",
+                           "A-014",
+                           "A-016",
+                           "A-017",
+                           "A-020",
+                           "A-021",
+                           "A-022",
+                           "A-015",
+                           "A-019",
+                           "A-001"
+                       ],
+        "Observation":  {
+                            "Timestamp":  "2026-04-19 04:48:27",
+                            "Future":  "start-work brief가 current opening의 다음 시도로 자연스럽게 이어지는지 확인",
+                            "Paused":  true,
+                            "QuestionsFeltLessBarehanded":  true,
+                            "RitualStayedSmall":  true,
+                            "Notes":  "A-024 lived bridge run"
+                        },
+        "ObservationSaved":  true,
+        "SnapshotPath":  "C:/Users/ibg05/OneDrive/Desktop/aaaa/scripts/data/current-opening-run-snapshots/current-opening-run-20260419_044827.md"
+    },
+    {
+        "Timestamp":  "2026-04-19 04:52:06",
+        "Task":  "begin current work wrapper lived run",
+        "CurrentFile":  "records/00_current_world.md",
+        "WorkType":  {
+                         "Name":  "current_update",
+                         "Label":  "현재 갱신형"
+                     },
+        "SilentPause":  "현재를 읽을 때는 세 줄보다 먼저 한 박자 조용히 멈춘다.",
+        "EntryRitual":  [
+                            "이번 하중 앞에서 다시 불려야 할 미래가 있는가?",
+                            "있다면 하나를 펼쳐본다.",
+                            "그 상태로 들어간다."
+                        ],
+        "RecalledFuture":  "wrapper가 second command 없이 current opening lived run까지 이어지는지 확인",
+        "ActiveQuestions":  [
+                                "이번 작업은 무엇을 잇는가",
+                                "이번 작업은 무엇을 지키는가",
+                                "이번 작업은 무엇을 끊지 않아야 하는가"
+                            ],
+        "ReadNow":  [
+                        "records/00_current_world.md",
+                        "records/05_work_routing.md",
+                        "records/care_rhythm_genealogy_v1.md",
+                        "records/ideal_code_foundation_v1.md",
+                        "records/document_body_tuning_current_entry_881_901_v1.md"
+                    ],
+        "AttemptIds":  [
+                           "A-025",
+                           "A-007",
+                           "A-008",
+                           "A-009",
+                           "A-010",
+                           "A-011",
+                           "A-012",
+                           "A-013",
+                           "A-014",
+                           "A-017",
+                           "A-002",
+                           "A-003",
+                           "A-004",
+                           "A-005",
+                           "A-006",
+                           "A-015",
+                           "A-016",
+                           "A-018",
+                           "A-019",
+                           "A-020",
+                           "A-021",
+                           "A-022",
+                           "A-023",
+                           "A-024"
+                       ],
+        "Observation":  {
+                            "Timestamp":  "2026-04-19 04:52:05",
+                            "Future":  "wrapper가 second command 없이 current opening lived run까지 이어지는지 확인",
+                            "Paused":  true,
+                            "QuestionsFeltLessBarehanded":  true,
+                            "RitualStayedSmall":  true,
+                            "Notes":  "A-025 wrapper lived run"
+                        },
+        "ObservationSaved":  true,
+        "SnapshotPath":  "C:/Users/ibg05/OneDrive/Desktop/aaaa/scripts/data/current-opening-run-snapshots/current-opening-run-20260419_045206.md"
+    },
+    {
+        "Timestamp":  "2026-04-19 04:55:31",
+        "Task":  "A-026 wrapper lived adoption run",
+        "CurrentFile":  "records/00_current_world.md",
+        "WorkType":  {
+                         "Name":  "current_update",
+                         "Label":  "현재 갱신형"
+                     },
+        "SilentPause":  "현재를 읽을 때는 세 줄보다 먼저 한 박자 조용히 멈춘다.",
+        "EntryRitual":  [
+                            "이번 하중 앞에서 다시 불려야 할 미래가 있는가?",
+                            "있다면 하나를 펼쳐본다.",
+                            "그 상태로 들어간다."
+                        ],
+        "RecalledFuture":  "begin-current-work가 current-facing 기본 입구로 자연스럽게 읽히는지 확인",
+        "ActiveQuestions":  [
+                                "이번 작업은 무엇을 잇는가",
+                                "이번 작업은 무엇을 지키는가",
+                                "이번 작업은 무엇을 끊지 않아야 하는가"
+                            ],
+        "ReadNow":  [
+                        "records/00_current_world.md",
+                        "records/05_work_routing.md",
+                        "records/care_rhythm_genealogy_v1.md",
+                        "records/ideal_code_foundation_v1.md",
+                        "records/document_body_tuning_current_entry_881_901_v1.md"
+                    ],
+        "AttemptIds":  [
+                           "A-007",
+                           "A-008",
+                           "A-009",
+                           "A-010",
+                           "A-011",
+                           "A-012",
+                           "A-013",
+                           "A-014",
+                           "A-017",
+                           "A-021",
+                           "A-025",
+                           "A-026",
+                           "A-002",
+                           "A-003",
+                           "A-004",
+                           "A-005",
+                           "A-006",
+                           "A-015",
+                           "A-016",
+                           "A-018",
+                           "A-019",
+                           "A-020",
+                           "A-022",
+                           "A-023",
+                           "A-024"
+                       ],
+        "Observation":  {
+                            "Timestamp":  "2026-04-19 04:55:31",
+                            "Future":  "begin-current-work가 current-facing 기본 입구로 자연스럽게 읽히는지 확인",
+                            "Paused":  true,
+                            "QuestionsFeltLessBarehanded":  true,
+                            "RitualStayedSmall":  true,
+                            "Notes":  "A-026 adoption lived run"
+                        },
+        "ObservationSaved":  true,
+        "SnapshotPath":  "C:/Users/ibg05/OneDrive/Desktop/aaaa/scripts/data/current-opening-run-snapshots/current-opening-run-20260419_045531.md"
+    },
+    {
+        "Timestamp":  "2026-04-19 04:57:41",
+        "Task":  "A-027 generic current begin-work run",
+        "CurrentFile":  "records/00_current_world.md",
+        "WorkType":  {
+                         "Name":  "current_update",
+                         "Label":  "현재 갱신형"
+                     },
+        "SilentPause":  "현재를 읽을 때는 세 줄보다 먼저 한 박자 조용히 멈춘다.",
+        "EntryRitual":  [
+                            "이번 하중 앞에서 다시 불려야 할 미래가 있는가?",
+                            "있다면 하나를 펼쳐본다.",
+                            "그 상태로 들어간다."
+                        ],
+        "RecalledFuture":  "begin-work가 current에서는 lived bridge로 제대로 위임되는지 확인",
+        "ActiveQuestions":  [
+                                "이번 작업은 무엇을 잇는가",
+                                "이번 작업은 무엇을 지키는가",
+                                "이번 작업은 무엇을 끊지 않아야 하는가"
+                            ],
+        "ReadNow":  [
+                        "records/00_current_world.md",
+                        "records/05_work_routing.md",
+                        "records/care_rhythm_genealogy_v1.md",
+                        "records/ideal_code_foundation_v1.md",
+                        "records/document_body_tuning_current_entry_881_901_v1.md"
+                    ],
+        "AttemptIds":  [
+                           "A-025",
+                           "A-027",
+                           "A-007",
+                           "A-008",
+                           "A-009",
+                           "A-010",
+                           "A-011",
+                           "A-012",
+                           "A-013",
+                           "A-014",
+                           "A-002",
+                           "A-003",
+                           "A-004",
+                           "A-005",
+                           "A-006",
+                           "A-015",
+                           "A-016",
+                           "A-017",
+                           "A-018",
+                           "A-019",
+                           "A-020",
+                           "A-021",
+                           "A-022",
+                           "A-023",
+                           "A-024",
+                           "A-026"
+                       ],
+        "Observation":  {
+                            "Timestamp":  "2026-04-19 04:57:41",
+                            "Future":  "begin-work가 current에서는 lived bridge로 제대로 위임되는지 확인",
+                            "Paused":  true,
+                            "QuestionsFeltLessBarehanded":  true,
+                            "RitualStayedSmall":  true,
+                            "Notes":  "A-027 generic current run"
+                        },
+        "ObservationSaved":  true,
+        "SnapshotPath":  "C:/Users/ibg05/OneDrive/Desktop/aaaa/scripts/data/current-opening-run-snapshots/current-opening-run-20260419_045741.md"
+    },
+    {
+        "Timestamp":  "2026-04-19 11:24:20",
+        "Task":  "A-048 routing descent principle into current start run",
+        "CurrentFile":  "records/00_current_world.md",
+        "WorkType":  {
+                         "Name":  "current_update",
+                         "Label":  "현재 갱신형"
+                     },
+        "SilentPause":  "현재를 읽을 때는 세 줄보다 먼저 한 박자 조용히 멈춘다.",
+        "EntryRitual":  [
+                            "이번 하중 앞에서 다시 불려야 할 미래가 있는가?",
+                            "있다면 하나를 펼쳐본다.",
+                            "그 상태로 들어간다."
+                        ],
+        "RecalledFuture":  "Use the routing entry judgment principle in current without adding another surface.",
+        "ActiveQuestions":  [
+                                "이번 작업은 무엇을 잇는가",
+                                "이번 작업은 무엇을 지키는가",
+                                "이번 작업은 무엇을 끊지 않아야 하는가"
+                            ],
+        "ReadNow":  [
+                        "records/00_current_world.md",
+                        "records/05_work_routing.md",
+                        "records/care_rhythm_genealogy_v1.md",
+                        "records/ideal_code_foundation_v1.md",
+                        "records/document_body_tuning_current_entry_881_901_v1.md"
+                    ],
+        "AttemptIds":  [
+                           "A-007",
+                           "A-008",
+                           "A-009",
+                           "A-010",
+                           "A-011",
+                           "A-012",
+                           "A-013",
+                           "A-014",
+                           "A-018",
+                           "A-027",
+                           "A-048",
+                           "A-002",
+                           "A-003",
+                           "A-004",
+                           "A-005",
+                           "A-006",
+                           "A-015",
+                           "A-016",
+                           "A-017",
+                           "A-019",
+                           "A-020",
+                           "A-021",
+                           "A-022",
+                           "A-023",
+                           "A-024",
+                           "A-025",
+                           "A-026",
+                           "A-028",
+                           "A-047",
+                           "A-029",
+                           "A-030",
+                           "A-031",
+                           "A-032",
+                           "A-033",
+                           "A-034",
+                           "A-035",
+                           "A-036",
+                           "A-037",
+                           "A-038",
+                           "A-039",
+                           "A-040",
+                           "A-041",
+                           "A-042",
+                           "A-043",
+                           "A-044",
+                           "A-045",
+                           "A-046"
+                       ],
+        "Observation":  {
+                            "Timestamp":  "2026-04-19 11:24:20",
+                            "Future":  "Use the routing entry judgment principle in current without adding another surface.",
+                            "Paused":  true,
+                            "QuestionsFeltLessBarehanded":  true,
+                            "RitualStayedSmall":  true,
+                            "Notes":  "A-048 current now points startup back to routing entry judgment before adding a new surface."
+                        },
+        "ObservationSaved":  true,
+        "SnapshotPath":  "C:/Users/ibg05/OneDrive/Desktop/aaaa/scripts/data/current-opening-run-snapshots/current-opening-run-20260419_112420.md"
+    }
+]

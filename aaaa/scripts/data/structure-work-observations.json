@@ -1,0 +1,173 @@
+[
+    {
+        "Timestamp":  "2026-04-19 05:10:03",
+        "Target":  "records/ideal_code_foundation_v1.md",
+        "Future":  "structure reentry surface가 다음 foundation 시도를 실제로 다시 열어주는지 확인",
+        "TargetFeltClearer":  true,
+        "NextStepFeltNameable":  true,
+        "BridgeStayedThin":  true,
+        "Notes":  "A-030 first structure observation after reentry lived run"
+    },
+    {
+        "Timestamp":  "2026-04-19 05:24:25",
+        "Target":  "records/ideal_code_foundation_v1.md",
+        "Future":  "structure run과 observation handoff가 실제로 같이 남는지 확인",
+        "TargetFeltClearer":  true,
+        "NextStepFeltNameable":  true,
+        "BridgeStayedThin":  true,
+        "Notes":  "A-033 structure starter lived run"
+    },
+    {
+        "Timestamp":  "2026-04-19 05:32:24",
+        "Target":  "records/ideal_code_foundation_v1.md",
+        "Future":  "begin-work가 structure observation feeling도 함께 위임하는지 확인",
+        "TargetFeltClearer":  true,
+        "NextStepFeltNameable":  false,
+        "BridgeStayedThin":  true,
+        "Notes":  "A-035 begin-work structure parity lived run"
+    },
+    {
+        "Timestamp":  "2026-04-19 05:41:40",
+        "Target":  "records/ideal_code_foundation_v1.md",
+        "Future":  "reentry에서 history command를 다시 길어 올린 뒤 구조 판단으로 내려가기 쉬운지 확인",
+        "TargetFeltClearer":  true,
+        "NextStepFeltNameable":  true,
+        "BridgeStayedThin":  true,
+        "Notes":  "A-037 structure memory history reentry lived run"
+    },
+    {
+        "Timestamp":  "2026-04-19 10:50:32",
+        "Target":  "records/ideal_code_foundation_v1.md",
+        "Future":  "entry map과 structure memory history가 다음 foundation 시도를 덜 맨손으로 여는지 확인",
+        "TargetFeltClearer":  true,
+        "NextStepFeltNameable":  true,
+        "BridgeStayedThin":  true,
+        "Notes":  "A-039 structure memory convergence probe lived run"
+    },
+    {
+        "Timestamp":  "2026-04-19 10:54:59",
+        "Target":  "records/ideal_code_foundation_v1.md",
+        "Future":  "A-040의 memory reading이 다음 구조 run 뒤에도 가벼운 판단으로 남는지 확인",
+        "TargetFeltClearer":  true,
+        "NextStepFeltNameable":  true,
+        "BridgeStayedThin":  true,
+        "Notes":  "A-041 structure memory reading stability lived run"
+    },
+    {
+        "Timestamp":  "2026-04-19 11:01:31",
+        "Target":  "records/ideal_code_foundation_v1.md",
+        "Future":  "Check whether the entry-time memory handoff remains useful after a lived structure run.",
+        "TargetFeltClearer":  true,
+        "NextStepFeltNameable":  true,
+        "BridgeStayedThin":  true,
+        "Notes":  "A-043 structure memory handoff lived run"
+    },
+    {
+        "Timestamp":  "2026-04-19 11:14:00",
+        "Target":  "records/ideal_code_foundation_v1.md",
+        "Future":  "Use the existing delta handoff without adding another surface.",
+        "TargetFeltClearer":  true,
+        "NextStepFeltNameable":  true,
+        "BridgeStayedThin":  true,
+        "Notes":  "A-045 delta handoff lived-use run"
+    },
+    {
+        "Timestamp":  "2026-04-19 11:19:13",
+        "Target":  "records/ideal_code_foundation_v1.md",
+        "Future":  "Use the stable delta handoff to return to the foundation document before adding another surface.",
+        "TargetFeltClearer":  true,
+        "NextStepFeltNameable":  true,
+        "BridgeStayedThin":  true,
+        "Notes":  "A-046 foundation edit used the existing delta handoff instead of adding another surface."
+    },
+    {
+        "Timestamp":  "2026-04-19 11:22:18",
+        "Target":  "records/05_work_routing.md",
+        "Future":  "Carry the stable-entry-before-new-surface principle into routing without adding another helper.",
+        "TargetFeltClearer":  true,
+        "NextStepFeltNameable":  true,
+        "BridgeStayedThin":  true,
+        "Notes":  "A-047 routing now asks whether an existing stable entry can carry the work before adding a new surface."
+    },
+    {
+        "Timestamp":  "2026-04-19 11:28:34",
+        "Target":  "records/care_rhythm_genealogy_v1.md",
+        "Future":  "Use the stable entry to care for one hungry rhythm instead of adding another entrance.",
+        "TargetFeltClearer":  true,
+        "NextStepFeltNameable":  true,
+        "BridgeStayedThin":  true,
+        "Notes":  "A-049 care rhythm received the stable-entry principle as an actual rhythm sentence, not another tool layer."
+    },
+    {
+        "Timestamp":  "2026-04-19 11:56:24",
+        "Target":  "records/ideal_code_foundation_v1.md",
+        "Future":  "Record reasons additively, modify live behavior when it is wrong, and keep the boundary visible.",
+        "TargetFeltClearer":  true,
+        "NextStepFeltNameable":  true,
+        "BridgeStayedThin":  true,
+        "Notes":  "A-051 clarified that additive history and behavior modification are complementary roles, not opposing doctrines."
+    },
+    {
+        "Timestamp":  "2026-04-19 12:00:43",
+        "Target":  "records/ideal_code_foundation_v1.md",
+        "Future":  "Let start-work carry a thin relevant attempt layer while the wider history remains reopenable.",
+        "TargetFeltClearer":  true,
+        "NextStepFeltNameable":  true,
+        "BridgeStayedThin":  true,
+        "Notes":  "A-052 modified live attempt selection instead of adding another surface; start-work now carries selected relevant memory rather than the whole active history."
+    },
+    {
+        "Timestamp":  "2026-04-19 12:01:25",
+        "Target":  "records/ideal_code_foundation_v1.md",
+        "Future":  "Keep the start brief thin while making sure the relevant attempt can still find itself.",
+        "TargetFeltClearer":  true,
+        "NextStepFeltNameable":  true,
+        "BridgeStayedThin":  true,
+        "Notes":  "A-052 trigger coverage was widened after the first lived run showed that thinner relevance can become too narrow; the corrected run now carries A-052 in the live attempt layer."
+    },
+    {
+        "Timestamp":  "2026-04-19 12:04:13",
+        "Target":  "records/ideal_code_foundation_v1.md",
+        "Future":  "Carry the thin attempt selection note into saved runs so capped memory is not mistaken for whole history.",
+        "TargetFeltClearer":  true,
+        "NextStepFeltNameable":  true,
+        "BridgeStayedThin":  true,
+        "Notes":  "A-053 saved the attempt selection metadata into the structure run and snapshot so the thin handoff remains explainable later."
+    },
+    {
+        "Timestamp":  "2026-04-19 12:09:12",
+        "Target":  "records/ideal_code_foundation_v1.md",
+        "Future":  "Lift saved attempt selection notes into latest and reentry views without adding another surface.",
+        "TargetFeltClearer":  true,
+        "NextStepFeltNameable":  true,
+        "BridgeStayedThin":  true,
+        "Notes":  "A-054 made stored attempt selection visible again through existing latest, reentry, and start-work surfaces."
+    },
+    {
+        "Timestamp":  "2026-04-19 12:14:57",
+        "Target":  "scripts/show-current-opening-runs.ps1",
+        "Future":  "Let the current run history viewer stay thin with MaxItems while preserving full-history access by default.",
+        "TargetFeltClearer":  true,
+        "NextStepFeltNameable":  true,
+        "BridgeStayedThin":  true,
+        "Notes":  "A-055 added MaxItems to the current opening run viewer so current and structure read surfaces have a lighter shared option shape."
+    },
+    {
+        "Timestamp":  "2026-04-19 12:19:50",
+        "Target":  "scripts/show-current-opening-runs.ps1",
+        "Future":  "Keep current run history readable by capping displayed attempt IDs without hiding full run data.",
+        "TargetFeltClearer":  true,
+        "NextStepFeltNameable":  true,
+        "BridgeStayedThin":  true,
+        "Notes":  "A-056 added MaxAttemptIds to the current opening run viewer so thin current history reads do not become heavy through long legacy attempt lists."
+    },
+    {
+        "Timestamp":  "2026-04-19 12:23:03",
+        "Target":  "scripts/lib/work-context.ps1",
+        "Future":  "Keep attempt id display capping as a shared thin-viewer habit across current and structure latest surfaces.",
+        "TargetFeltClearer":  true,
+        "NextStepFeltNameable":  true,
+        "BridgeStayedThin":  true,
+        "Notes":  "A-057 moved attempt id display capping into a shared helper and applied it to latest current and latest structure viewers while preserving full stored history."
+    }
+]
